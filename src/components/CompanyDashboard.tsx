@@ -444,12 +444,12 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Filter by State</Label>
-                    <Select value={filters.stateId} onValueChange={(value) => setFilters({...filters, stateId: value, districtId: '', blockId: ''})}>
+                    <Select value={filters.stateId} onValueChange={(value) => setFilters({...filters, stateId: value === 'all' ? '' : value, districtId: '', blockId: ''})}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="All states" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All States</SelectItem>
+                        <SelectItem value="all">All States</SelectItem>
                         {states.map(state => (
                           <SelectItem key={state.id} value={state.id}>{state.name}</SelectItem>
                         ))}
@@ -458,12 +458,12 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                   </div>
                   <div>
                     <Label>Filter by District</Label>
-                    <Select value={filters.districtId} onValueChange={(value) => setFilters({...filters, districtId: value, blockId: ''})}>
+                    <Select value={filters.districtId} onValueChange={(value) => setFilters({...filters, districtId: value === 'all' ? '' : value, blockId: ''})}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="All districts" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Districts</SelectItem>
+                        <SelectItem value="all">All Districts</SelectItem>
                         {districts.filter(d => !filters.stateId || d.stateId === filters.stateId).map(district => (
                           <SelectItem key={district.id} value={district.id}>{district.name}</SelectItem>
                         ))}
@@ -472,12 +472,12 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                   </div>
                   <div>
                     <Label>Filter by Block</Label>
-                    <Select value={filters.blockId} onValueChange={(value) => setFilters({...filters, blockId: value})}>
+                    <Select value={filters.blockId} onValueChange={(value) => setFilters({...filters, blockId: value === 'all' ? '' : value})}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="All blocks" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Blocks</SelectItem>
+                        <SelectItem value="all">All Blocks</SelectItem>
                         {blocks.filter(b => !filters.districtId || b.districtId === filters.districtId).map(block => (
                           <SelectItem key={block.id} value={block.id}>{block.name}</SelectItem>
                         ))}
