@@ -5,7 +5,7 @@ export interface User {
   id: string;
   username: string;
   password: string;
-  role: 'admin' | 'company' | 'trainer';
+  role: 'superadmin' | 'companyadmin' | 'trainer';
   companyId?: string;
   trainerData?: {
     name: string;
