@@ -53,6 +53,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
 import { createState } from "@/service/companyAdminApi";
+import { getStates } from "@/service/companyAdminApi";
+import { createDistrict } from "@/service/companyAdminApi";
+import { getBlocks } from "@/service/companyAdminApi";
+import { createBlock } from "@/service/companyAdminApi";
 
 interface CompanyDashboardProps {
   user: User;
@@ -80,7 +84,11 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   // Registration forms state
   const [newState, setNewState] = useState({ name: "" });
   const [newDistrict, setNewDistrict] = useState({ name: "", stateId: "" });
-  const [newBlock, setNewBlock] = useState({ name: "", districtId: "" });
+  const [newBlock, setNewBlock] = useState({
+    name: "",
+    districtId: "",
+    pincode: "",
+  });
   const [showSchoolForm, setShowSchoolForm] = useState(false);
 
   const { toast } = useToast();
@@ -187,40 +195,75 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     }
   };
 
-  const handleAddDistrict = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDistrict.name || !newDistrict.stateId || !user.companyId) return;
-
-    const district: District = {
-      id: `district-${Date.now()}`,
-      name: newDistrict.name,
-      stateId: newDistrict.stateId,
-      companyId: user.companyId,
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const data = await getStates();
+        setStates(data); // [{ _id, name }]
+      } catch (error) {
+        console.error("Failed to fetch states", error);
+      }
     };
+    fetchStates();
+  }, []);
 
-    storage.addDistrict(district);
-    setNewDistrict({ name: "", stateId: "" });
-    loadData();
-    toast({ title: "Success", description: "District added successfully" });
+  const handleAddDistrict = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDistrict.name || !newDistrict.stateId) return;
+
+    try {
+      await createDistrict({
+        stateId: newDistrict.stateId,
+        name: newDistrict.name,
+      });
+
+      setNewDistrict({ name: "", stateId: "" });
+      toast({ title: "✅ Success", description: "District registered!" });
+    } catch (error: any) {
+      toast({
+        title: "❌ Error",
+        description: error.message || "Failed to register district",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddBlock = (e: React.FormEvent) => {
+  const handleAddBlock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBlock.name || !newBlock.districtId || !user.companyId) return;
+    if (!newBlock.name || !newBlock.districtId || !newBlock.pincode) return;
 
-    const block: Block = {
-      id: `block-${Date.now()}`,
-      name: newBlock.name,
-      districtId: newBlock.districtId,
-      companyId: user.companyId,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const response = await createBlock({
+        name: newBlock.name,
+        districtId: newBlock.districtId,
+        pincode: newBlock.pincode,
+      });
 
-    storage.addBlock(block);
-    setNewBlock({ name: "", districtId: "" });
-    loadData();
-    toast({ title: "Success", description: "Block added successfully" });
+      setBlocks((prev) => [
+        ...prev,
+        {
+          id: response._id,
+          name: response.name,
+          districtId: response.districtId._id,
+          companyId: response.companyId,
+          pincode: response.pincode,
+          createdAt: response.createdAt,
+        },
+      ]);
+
+      setNewBlock({ name: "", districtId: "", pincode: "" });
+
+      toast({
+        title: "✅ Success",
+        description: "Block registered successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "❌ Error",
+        description: error.message || "Failed to register block",
+        variant: "destructive",
+      });
+    }
   };
 
   const StatCard = ({
@@ -444,7 +487,10 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         </SelectTrigger>
                         <SelectContent>
                           {states.map((state) => (
-                            <SelectItem key={state.id} value={state.id}>
+                            <SelectItem
+                              key={state._id || state.id}
+                              value={state._id || state.id}
+                            >
                               {state.name}
                             </SelectItem>
                           ))}
@@ -457,10 +503,10 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         id='districtName'
                         value={newDistrict.name}
                         onChange={(e) =>
-                          setNewDistrict({
-                            ...newDistrict,
+                          setNewDistrict((prev) => ({
+                            ...prev,
                             name: e.target.value,
-                          })
+                          }))
                         }
                         placeholder='Enter district name'
                         className='mt-1'
@@ -472,7 +518,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                       disabled={!newDistrict.stateId}
                     >
                       <Plus className='w-4 h-4 mr-2' />
-                      Add District
+                      Add Distric
                     </Button>
                   </form>
                 </CardContent>
@@ -488,6 +534,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleAddBlock} className='space-y-4'>
+                    {/* District Select */}
                     <div>
                       <Label htmlFor='blockDistrict'>Select District</Label>
                       <Select
@@ -501,32 +548,54 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         </SelectTrigger>
                         <SelectContent>
                           {districts.map((district) => (
-                            <SelectItem key={district.id} value={district.id}>
+                            <SelectItem
+                              key={district._id || district.id}
+                              value={district._id || district.id}
+                            >
                               {district.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Block Name */}
                     <div>
                       <Label htmlFor='blockName'>Block Name</Label>
                       <Input
                         id='blockName'
+                        placeholder='Enter block name'
                         value={newBlock.name}
                         onChange={(e) =>
                           setNewBlock({ ...newBlock, name: e.target.value })
                         }
-                        placeholder='Enter block name'
-                        className='mt-1'
                       />
                     </div>
+
+                    {/* Pincode */}
+                    <div>
+                      <Label htmlFor='blockPincode'>Pincode</Label>
+                      <Input
+                        id='blockPincode'
+                        placeholder='Enter pincode'
+                        value={newBlock.pincode || ""}
+                        onChange={(e) =>
+                          setNewBlock({ ...newBlock, pincode: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    {/* Submit */}
                     <Button
                       type='submit'
+                      disabled={
+                        !newBlock.name ||
+                        !newBlock.districtId ||
+                        !newBlock.pincode
+                      }
                       className='w-full'
-                      disabled={!newBlock.districtId}
                     >
-                      <Plus className='w-4 h-4 mr-2' />
-                      Add Block
+                      + Add Block
                     </Button>
                   </form>
                 </CardContent>
