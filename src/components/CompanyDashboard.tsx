@@ -55,7 +55,7 @@ import SchoolRegistrationForm from "./SchoolRegistrationForm";
 import { createState } from "@/service/companyAdminApi";
 import { getStates } from "@/service/companyAdminApi";
 import { createDistrict } from "@/service/companyAdminApi";
-import { getBlocks } from "@/service/companyAdminApi";
+import { getDistricts } from "@/service/companyAdminApi";
 import { createBlock } from "@/service/companyAdminApi";
 
 interface CompanyDashboardProps {
@@ -205,6 +205,18 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       }
     };
     fetchStates();
+  }, []);
+
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        const data = await getDistricts();
+        setDistricts(data); // API returns: [{ _id, name, stateId, ... }]
+      } catch (error) {
+        console.error("Failed to fetch districts", error);
+      }
+    };
+    fetchDistricts();
   }, []);
 
   const handleAddDistrict = async (e: React.FormEvent) => {
