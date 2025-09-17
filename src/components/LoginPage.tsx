@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Shield, Eye, EyeOff } from 'lucide-react';
-import { User } from '@/lib/storage';
-import { useToast } from '@/hooks/use-toast';
-import { loginUser, LoginRole } from '../service/authApi';
+import React, { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Shield, Eye, EyeOff } from "lucide-react";
+import { User } from "@/lib/storage";
+import { useToast } from "@/hooks/use-toast";
+import { loginUser, LoginRole } from "../service/authApi";
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState<LoginRole>('SuperAdmin'); // default role
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<LoginRole>("SuperAdmin"); // default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -37,7 +43,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         token: res.token,
       };
 
+      // ✅ Save to localStorage
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", res.token);
+
       onLogin(user);
+
       toast({
         title: "Login Successful",
         description: `Welcome ${res.user.username}!`,
@@ -54,83 +65,93 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md">
-        <Card className="backdrop-blur-xl bg-card/80 border-0 shadow-2xl">
-          <CardHeader className="text-center pb-8">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-primary/10 rounded-full">
-                <Shield className="w-8 h-8 text-primary" />
+    <div className='min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10 flex items-center justify-center p-4'>
+      <div className='relative w-full max-w-md'>
+        <Card className='backdrop-blur-xl bg-card/80 border-0 shadow-2xl'>
+          <CardHeader className='text-center pb-8'>
+            <div className='flex justify-center mb-4'>
+              <div className='p-4 bg-primary/10 rounded-full'>
+                <Shield className='w-8 h-8 text-primary' />
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <CardTitle className='text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent'>
               NSQF Portal
             </CardTitle>
-            <CardDescription className="text-lg text-muted-foreground">
+            <CardDescription className='text-lg text-muted-foreground'>
               Multi-Tenant Education Management System
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className='space-y-6'>
+            <form onSubmit={handleLogin} className='space-y-4'>
               {/* Role Dropdown */}
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium">Role</Label>
+              <div className='space-y-2'>
+                <Label htmlFor='role' className='text-sm font-medium'>
+                  Role
+                </Label>
                 <select
-                  id="role"
+                  id='role'
                   value={role}
                   onChange={(e) => setRole(e.target.value as LoginRole)}
-                  className="w-full h-12 px-3 border rounded-lg bg-background/50"
+                  className='w-full h-12 px-3 border rounded-lg bg-background/50'
                 >
-                  <option value="superadmin">SuperAdmin</option>
-                  <option value="companyadmin">CompanyAdmin</option>
-                  <option value="trainer">Trainer</option>
+                  <option value='superadmin'>SuperAdmin</option>
+                  <option value='companyadmin'>CompanyAdmin</option>
+                  <option value='trainer'>Trainer</option>
                 </select>
               </div>
 
               {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <div className='space-y-2'>
+                <Label htmlFor='email' className='text-sm font-medium'>
+                  Email
+                </Label>
                 <Input
-                  id="email"
-                  type="email"
+                  id='email'
+                  type='email'
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12"
-                  placeholder="Enter your email"
+                  className='h-12'
+                  placeholder='Enter your email'
                   required
                 />
               </div>
 
               {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <div className="relative">
+              <div className='space-y-2'>
+                <Label htmlFor='password' className='text-sm font-medium'>
+                  Password
+                </Label>
+                <div className='relative'>
                   <Input
-                    id="password"
+                    id='password'
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pr-10"
-                    placeholder="Enter your password"
+                    className='h-12 pr-10'
+                    placeholder='Enter your password'
                     required
                   />
                   <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    className='absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8'
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className='h-4 w-4' />
+                    ) : (
+                      <Eye className='h-4 w-4' />
+                    )}
                   </Button>
                 </div>
               </div>
 
               {/* Submit */}
               <Button
-                type="submit"
-                className="w-full h-12 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground"
+                type='submit'
+                className='w-full h-12 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground'
                 disabled={loading}
               >
                 {loading ? "Signing In..." : "Sign In"}
@@ -205,12 +226,12 @@ export default LoginPage;
 //   return (
 //     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10 flex items-center justify-center p-4">
 //       <div className="absolute inset-0 bg-grid-primary/[0.02] bg-[size:60px_60px]" />
-      
+
 //       <div className="relative w-full max-w-md">
 //         {/* Floating Background Elements */}
 //         <div className="absolute -top-10 -left-10 w-20 h-20 bg-primary/10 rounded-full blur-xl animate-pulse" />
 //         <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-accent/10 rounded-full blur-xl animate-pulse delay-1000" />
-        
+
 //         <Card className="backdrop-blur-xl bg-card/80 border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-[1.02]">
 //           <CardHeader className="text-center pb-8">
 //             <div className="flex justify-center mb-4">
@@ -295,7 +316,7 @@ export default LoginPage;
 //             </div>
 
 //             <div className="grid gap-3">
-//               <div 
+//               <div
 //                 className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-destructive/5 to-destructive/10 border border-destructive/20 hover:border-destructive/40 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
 //                 onClick={() => quickLogin('admin', 'admin123', 'admin')}
 //               >
@@ -313,7 +334,7 @@ export default LoginPage;
 //                 </Badge>
 //               </div>
 
-//               <div 
+//               <div
 //                 className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
 //                 onClick={() => quickLogin('techskills', 'tech123', 'company')}
 //               >
@@ -331,7 +352,7 @@ export default LoginPage;
 //                 </Badge>
 //               </div>
 
-//               <div 
+//               <div
 //                 className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-accent/5 to-accent/10 border border-accent/20 hover:border-accent/40 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
 //                 onClick={() => quickLogin('industrial', 'ind123', 'company')}
 //               >
@@ -349,7 +370,7 @@ export default LoginPage;
 //                 </Badge>
 //               </div>
 
-//               <div 
+//               <div
 //                 className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-secondary/5 to-secondary/10 border border-secondary/20 hover:border-secondary/40 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
 //                 onClick={() => quickLogin('digital', 'dig123', 'company')}
 //               >
