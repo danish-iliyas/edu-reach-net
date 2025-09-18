@@ -37,13 +37,16 @@ interface SchoolRegistrationFormProps {
 }
 
 interface Trainer {
-  name: string;
-  username: string;
+  fullName: string;
+  email: string;
+  phone: string;
   password: string;
+  status: string;
+  coordinates: string;
 }
 
 interface TradeWithTrainers {
-  tradeId: string; // selected trade id
+  tradeId: string;
   trainers: Trainer[];
 }
 
@@ -110,9 +113,12 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
   const addTrainer = (tradeIndex: number) => {
     const updatedTrades = [...trades];
     updatedTrades[tradeIndex].trainers.push({
-      name: "",
-      username: "",
+      fullName: "",
+      email: "",
+      phone: "",
       password: "",
+      status: "active",
+      coordinates: "",
     });
     setTrades(updatedTrades);
   };
@@ -181,9 +187,11 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
     const invalidTrainers = trades.some((t) =>
       t.trainers.some(
         (trainer) =>
-          !trainer.name.trim() ||
-          !trainer.username.trim() ||
-          !trainer.password.trim()
+          !trainer.fullName.trim() ||
+          !trainer.email.trim() ||
+          !trainer.phone.trim() ||
+          !trainer.password.trim() ||
+          !trainer.coordinates.trim()
       )
     );
     if (invalidTrainers) {
@@ -208,7 +216,22 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
             parseFloat(formData.latitude),
           ],
         },
-        trades: trades.map((t) => t.tradeId),
+        trades: trades.map((t) => ({
+          tradeId: t.tradeId,
+          trainers: t.trainers.map((tr) => ({
+            fullName: tr.fullName,
+            email: tr.email,
+            phone: tr.phone,
+            password: tr.password,
+            status: tr.status,
+            location: {
+              type: "Point",
+              coordinates: tr.coordinates
+                .split(",")
+                .map((c) => parseFloat(c.trim())),
+            },
+          })),
+        })),
       };
 
       const response = await createSchool(payload);
@@ -457,64 +480,116 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
                                 {trade.trainers.map((trainer, trainerIndex) => (
                                   <div
                                     key={trainerIndex}
-                                    className='grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-background/50 rounded-lg border'
+                                    className='p-4 bg-background/50 rounded-lg border space-y-4'
                                   >
-                                    <div className='md:col-span-1'>
-                                      <Label className='text-xs'>
-                                        Trainer Name
-                                      </Label>
-                                      <Input
-                                        value={trainer.name}
-                                        onChange={(e) =>
-                                          updateTrainer(
-                                            tradeIndex,
-                                            trainerIndex,
-                                            "name",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder='Full name'
-                                        className='mt-1'
-                                      />
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                      <div>
+                                        <Label className='text-xs'>
+                                          Full Name
+                                        </Label>
+                                        <Input
+                                          value={trainer.fullName}
+                                          onChange={(e) =>
+                                            updateTrainer(
+                                              tradeIndex,
+                                              trainerIndex,
+                                              "fullName",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder='Full name'
+                                          className='mt-1'
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className='text-xs'>Email</Label>
+                                        <Input
+                                          type='email'
+                                          value={trainer.email}
+                                          onChange={(e) =>
+                                            updateTrainer(
+                                              tradeIndex,
+                                              trainerIndex,
+                                              "email",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder='Email address'
+                                          className='mt-1'
+                                        />
+                                      </div>
                                     </div>
-                                    <div className='md:col-span-1'>
-                                      <Label className='text-xs'>
-                                        Username
-                                      </Label>
-                                      <Input
-                                        value={trainer.username}
-                                        onChange={(e) =>
-                                          updateTrainer(
-                                            tradeIndex,
-                                            trainerIndex,
-                                            "username",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder='Login username'
-                                        className='mt-1'
-                                      />
+
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                      <div>
+                                        <Label className='text-xs'>Phone</Label>
+                                        <Input
+                                          value={trainer.phone}
+                                          onChange={(e) =>
+                                            updateTrainer(
+                                              tradeIndex,
+                                              trainerIndex,
+                                              "phone",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder='Phone number'
+                                          className='mt-1'
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className='text-xs'>
+                                          Password
+                                        </Label>
+                                        <Input
+                                          type='password'
+                                          value={trainer.password}
+                                          onChange={(e) =>
+                                            updateTrainer(
+                                              tradeIndex,
+                                              trainerIndex,
+                                              "password",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder='Password'
+                                          className='mt-1'
+                                        />
+                                      </div>
                                     </div>
-                                    <div className='md:col-span-1'>
-                                      <Label className='text-xs'>
-                                        Password
-                                      </Label>
-                                      <Input
-                                        value={trainer.password}
-                                        onChange={(e) =>
-                                          updateTrainer(
-                                            tradeIndex,
-                                            trainerIndex,
-                                            "password",
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder='Login password'
-                                        type='password'
-                                        className='mt-1'
-                                      />
+
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                      <div>
+                                        <Label className='text-xs'>
+                                          Status
+                                        </Label>
+                                        <Select
+                                          value={trainer.status}
+                                          onValueChange={(val) =>
+                                            updateTrainer(
+                                              tradeIndex,
+                                              trainerIndex,
+                                              "status",
+                                              val
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className='mt-1'>
+                                            <SelectValue placeholder='Status' />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value='active'>
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value='inactive'>
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                     </div>
-                                    <div className='flex items-end'>
+
+                                    <div className='flex justify-end'>
                                       <Button
                                         type='button'
                                         variant='ghost'
