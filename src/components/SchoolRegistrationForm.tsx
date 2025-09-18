@@ -1,70 +1,105 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  School, 
-  Plus, 
-  X, 
-  Users, 
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  School,
+  Plus,
+  X,
+  Users,
   Briefcase,
   Save,
   ArrowLeft,
-  GraduationCap
-} from 'lucide-react';
-import { storage, State, District, Block, School as SchoolType, Trade, Trainer } from '@/lib/storage';
-import { useToast } from '@/hooks/use-toast';
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { getBlocks, createSchool, getTrades } from "@/service/companyAdminApi";
 
 interface SchoolRegistrationFormProps {
   companyId: string;
-  states: State[];
-  districts: District[];
-  blocks: Block[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-interface TradeWithTrainers {
+interface Trainer {
   name: string;
-  trainers: {
-    name: string;
-    username: string;
-    password: string;
-  }[];
+  username: string;
+  password: string;
+}
+
+interface TradeWithTrainers {
+  tradeId: string; // selected trade id
+  trainers: Trainer[];
 }
 
 const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
   companyId,
-  states,
-  districts,
-  blocks,
   onClose,
-  onSuccess
+  onSuccess,
 }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    stateId: '',
-    districtId: '',
-    blockId: ''
+    uid: "",
+    name: "",
+    blockId: "",
+    address: "",
+    latitude: "",
+    longitude: "",
   });
+
+  const [blocks, setBlocks] = useState<any[]>([]);
   const [trades, setTrades] = useState<TradeWithTrainers[]>([]);
-  const [currentStep, setCurrentStep] = useState<'school' | 'trades'>('school');
+  const [availableTrades, setAvailableTrades] = useState<any[]>([]);
+  const [currentStep, setCurrentStep] = useState<"school" | "trades">("school");
   const { toast } = useToast();
 
-  const filteredDistricts = districts.filter(d => d.stateId === formData.stateId);
-  const filteredBlocks = blocks.filter(b => b.districtId === formData.districtId);
+  // Fetch blocks
+  useEffect(() => {
+    async function fetchBlocks() {
+      try {
+        const res = await getBlocks();
+        setBlocks(res);
+      } catch (error) {
+        console.error("Failed to fetch blocks:", error);
+      }
+    }
+    fetchBlocks();
+  }, []);
+
+  // Fetch trades
+  useEffect(() => {
+    async function fetchTrades() {
+      try {
+        const res = await getTrades();
+        setAvailableTrades(res);
+      } catch (error) {
+        console.error("Failed to fetch trades:", error);
+      }
+    }
+    fetchTrades();
+  }, []);
 
   const addTrade = () => {
-    setTrades([...trades, { name: '', trainers: [] }]);
+    setTrades([...trades, { tradeId: "", trainers: [] }]);
   };
 
-  const updateTrade = (index: number, name: string) => {
+  const updateTrade = (index: number, tradeId: string) => {
     const updatedTrades = [...trades];
-    updatedTrades[index].name = name;
+    updatedTrades[index].tradeId = tradeId;
     setTrades(updatedTrades);
   };
 
@@ -75,18 +110,23 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
   const addTrainer = (tradeIndex: number) => {
     const updatedTrades = [...trades];
     updatedTrades[tradeIndex].trainers.push({
-      name: '',
-      username: '',
-      password: ''
+      name: "",
+      username: "",
+      password: "",
     });
     setTrades(updatedTrades);
   };
 
-  const updateTrainer = (tradeIndex: number, trainerIndex: number, field: string, value: string) => {
+  const updateTrainer = (
+    tradeIndex: number,
+    trainerIndex: number,
+    field: keyof Trainer,
+    value: string
+  ) => {
     const updatedTrades = [...trades];
     updatedTrades[tradeIndex].trainers[trainerIndex] = {
       ...updatedTrades[tradeIndex].trainers[trainerIndex],
-      [field]: value
+      [field]: value,
     };
     setTrades(updatedTrades);
   };
@@ -99,8 +139,15 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
 
   const handleSchoolSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.stateId || !formData.districtId || !formData.blockId) {
+
+    if (
+      !formData.uid ||
+      !formData.name ||
+      !formData.blockId ||
+      !formData.address ||
+      !formData.latitude ||
+      !formData.longitude
+    ) {
       toast({
         title: "Error",
         description: "Please fill all school details",
@@ -109,10 +156,10 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
       return;
     }
 
-    setCurrentStep('trades');
+    setCurrentStep("trades");
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     if (trades.length === 0) {
       toast({
         title: "Error",
@@ -122,18 +169,22 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
       return;
     }
 
-    const invalidTrades = trades.filter(t => !t.name.trim());
-    if (invalidTrades.length > 0) {
+    if (trades.some((t) => !t.tradeId)) {
       toast({
         title: "Error",
-        description: "Please provide names for all trades",
+        description: "Please select trades for all entries",
         variant: "destructive",
       });
       return;
     }
 
-    const invalidTrainers = trades.some(t => 
-      t.trainers.some(trainer => !trainer.name.trim() || !trainer.username.trim() || !trainer.password.trim())
+    const invalidTrainers = trades.some((t) =>
+      t.trainers.some(
+        (trainer) =>
+          !trainer.name.trim() ||
+          !trainer.username.trim() ||
+          !trainer.password.trim()
+      )
     );
     if (invalidTrainers) {
       toast({
@@ -145,56 +196,26 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
     }
 
     try {
-      // Create school
-      const schoolId = `school-${Date.now()}`;
-      const school: SchoolType = {
-        id: schoolId,
+      const payload = {
+        uid: formData.uid,
         name: formData.name,
-        stateId: formData.stateId,
-        districtId: formData.districtId,
+        address: formData.address,
         blockId: formData.blockId,
-        companyId,
-        trades: [],
-        trainers: [],
-        createdAt: new Date().toISOString()
+        location: {
+          type: "Point",
+          coordinates: [
+            parseFloat(formData.longitude),
+            parseFloat(formData.latitude),
+          ],
+        },
+        trades: trades.map((t) => t.tradeId),
       };
 
-      storage.addSchool(school);
-
-      // Create trades and trainers
-      trades.forEach(trade => {
-        const tradeId = `trade-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const tradeData: Trade = {
-          id: tradeId,
-          name: trade.name,
-          schoolId,
-          companyId,
-          createdAt: new Date().toISOString()
-        };
-
-        storage.addTrade(tradeData);
-
-        // Create trainers for this trade
-        trade.trainers.forEach(trainer => {
-          const trainerId = `trainer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          const trainerData: Trainer = {
-            id: trainerId,
-            name: trainer.name,
-            username: trainer.username,
-            password: trainer.password,
-            tradeId,
-            schoolId,
-            companyId,
-            createdAt: new Date().toISOString()
-          };
-
-          storage.addTrainer(trainerData);
-        });
-      });
+      const response = await createSchool(payload);
 
       toast({
         title: "Success",
-        description: `School "${formData.name}" registered successfully with ${trades.length} trades and ${trades.reduce((acc, t) => acc + t.trainers.length, 0)} trainers`,
+        description: `School "${formData.name}" registered successfully`,
       });
 
       onSuccess();
@@ -208,33 +229,35 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-card rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border/50 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <School className="w-6 h-6 text-primary" />
+    <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50'>
+      <div className='bg-card rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden'>
+        <div className='sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border/50 p-6'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-primary/10 rounded-lg'>
+                <School className='w-6 h-6 text-primary' />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Register School</h2>
-                <p className="text-sm text-muted-foreground">
-                  {currentStep === 'school' ? 'Step 1: School Details' : 'Step 2: Trades & Trainers'}
+                <h2 className='text-2xl font-bold'>Register School</h2>
+                <p className='text-sm text-muted-foreground'>
+                  {currentStep === "school"
+                    ? "Step 1: School Details"
+                    : "Step 2: Trades & Trainers"}
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
+            <Button variant='ghost' size='sm' onClick={onClose}>
+              <X className='w-4 h-4' />
             </Button>
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {currentStep === 'school' ? (
+        <div className='p-6 overflow-y-auto max-h-[calc(90vh-140px)]'>
+          {currentStep === "school" ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <School className="w-5 h-5" />
+                <CardTitle className='flex items-center gap-2'>
+                  <School className='w-5 h-5' />
                   School Information
                 </CardTitle>
                 <CardDescription>
@@ -242,100 +265,119 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSchoolSubmit} className="space-y-6">
+                <form onSubmit={handleSchoolSubmit} className='space-y-6'>
                   <div>
-                    <Label htmlFor="schoolName">School Name</Label>
+                    <Label htmlFor='schoolId'>School ID</Label>
                     <Input
-                      id="schoolName"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="Enter school name"
-                      className="mt-1"
+                      id='schoolId'
+                      value={formData.uid}
+                      onChange={(e) =>
+                        setFormData({ ...formData, uid: e.target.value })
+                      }
+                      placeholder='Enter school ID'
+                      className='mt-1'
                       required
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor='schoolName'>School Name</Label>
+                    <Input
+                      id='schoolName'
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      placeholder='Enter school name'
+                      className='mt-1'
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Block</Label>
+                    <Select
+                      value={formData.blockId}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, blockId: value })
+                      }
+                    >
+                      <SelectTrigger className='mt-1'>
+                        <SelectValue placeholder='Select block' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {blocks.map((block) => (
+                          <SelectItem key={block._id} value={block._id}>
+                            {block.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Address</Label>
+                    <Input
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      placeholder='Enter address'
+                      className='mt-1'
+                      required
+                    />
+                  </div>
+
+                  <div className='grid grid-cols-2 gap-4'>
                     <div>
-                      <Label>State</Label>
-                      <Select 
-                        value={formData.stateId} 
-                        onValueChange={(value) => setFormData({
-                          ...formData, 
-                          stateId: value, 
-                          districtId: '', 
-                          blockId: ''
-                        })}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {states.map(state => (
-                            <SelectItem key={state.id} value={state.id}>{state.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Latitude</Label>
+                      <Input
+                        type='number'
+                        step='any'
+                        value={formData.latitude}
+                        onChange={(e) =>
+                          setFormData({ ...formData, latitude: e.target.value })
+                        }
+                        placeholder='Latitude'
+                        className='mt-1'
+                        required
+                      />
                     </div>
 
                     <div>
-                      <Label>District</Label>
-                      <Select 
-                        value={formData.districtId} 
-                        onValueChange={(value) => setFormData({
-                          ...formData, 
-                          districtId: value, 
-                          blockId: ''
-                        })}
-                        disabled={!formData.stateId}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select district" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredDistricts.map(district => (
-                            <SelectItem key={district.id} value={district.id}>{district.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Block</Label>
-                      <Select 
-                        value={formData.blockId} 
-                        onValueChange={(value) => setFormData({...formData, blockId: value})}
-                        disabled={!formData.districtId}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select block" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredBlocks.map(block => (
-                            <SelectItem key={block.id} value={block.id}>{block.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Longitude</Label>
+                      <Input
+                        type='number'
+                        step='any'
+                        value={formData.longitude}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            longitude: e.target.value,
+                          })
+                        }
+                        placeholder='Longitude'
+                        className='mt-1'
+                        required
+                      />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3">
-                    <Button type="button" variant="outline" onClick={onClose}>
+                  <div className='flex justify-end gap-3'>
+                    <Button type='button' variant='outline' onClick={onClose}>
                       Cancel
                     </Button>
-                    <Button type="submit">
-                      Next: Add Trades
-                    </Button>
+                    <Button type='submit'>Next: Add Trades</Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
+            <div className='space-y-6'>
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
+                  <CardTitle className='flex items-center gap-2'>
+                    <Briefcase className='w-5 h-5' />
                     Trades & Trainers
                   </CardTitle>
                   <CardDescription>
@@ -343,97 +385,149 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
+                  <div className='space-y-6'>
                     {trades.map((trade, tradeIndex) => (
-                      <Card key={tradeIndex} className="border-2 border-dashed border-border/50">
-                        <CardHeader className="pb-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-primary" />
+                      <Card
+                        key={tradeIndex}
+                        className='border-2 border-dashed border-border/50'
+                      >
+                        <CardHeader className='pb-4'>
+                          <div className='flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <Briefcase className='w-4 h-4 text-primary' />
                               <Label>Trade {tradeIndex + 1}</Label>
                             </div>
                             {trades.length > 1 && (
                               <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
+                                type='button'
+                                variant='ghost'
+                                size='sm'
                                 onClick={() => removeTrade(tradeIndex)}
-                                className="text-destructive hover:text-destructive"
+                                className='text-destructive hover:text-destructive'
                               >
-                                <X className="w-4 h-4" />
+                                <X className='w-4 h-4' />
                               </Button>
                             )}
                           </div>
-                          <Input
-                            value={trade.name}
-                            onChange={(e) => updateTrade(tradeIndex, e.target.value)}
-                            placeholder="Enter trade name (e.g., Electrician, Plumber)"
-                            className="mt-2"
-                          />
+
+                          {/* Trade Dropdown */}
+                          <Select
+                            value={trade.tradeId}
+                            onValueChange={(value) =>
+                              updateTrade(tradeIndex, value)
+                            }
+                          >
+                            <SelectTrigger className='mt-2'>
+                              <SelectValue placeholder='Select trade' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableTrades.map((t) => (
+                                <SelectItem key={t._id} value={t._id}>
+                                  {t.name} ({t.category})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </CardHeader>
+
                         <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Label className="flex items-center gap-2">
-                                <Users className="w-4 h-4" />
+                          <div className='space-y-4'>
+                            <div className='flex items-center justify-between'>
+                              <Label className='flex items-center gap-2'>
+                                <Users className='w-4 h-4' />
                                 Trainers for this trade
                               </Label>
                               <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
+                                type='button'
+                                variant='outline'
+                                size='sm'
                                 onClick={() => addTrainer(tradeIndex)}
                               >
-                                <Plus className="w-4 h-4 mr-1" />
+                                <Plus className='w-4 h-4 mr-1' />
                                 Add Trainer
                               </Button>
                             </div>
 
                             {trade.trainers.length === 0 ? (
-                              <div className="text-center py-4 text-muted-foreground">
+                              <div className='text-center py-4 text-muted-foreground'>
                                 No trainers added for this trade
                               </div>
                             ) : (
-                              <div className="grid gap-4">
+                              <div className='grid gap-4'>
                                 {trade.trainers.map((trainer, trainerIndex) => (
-                                  <div key={trainerIndex} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-background/50 rounded-lg border">
-                                    <div className="md:col-span-1">
-                                      <Label className="text-xs">Trainer Name</Label>
+                                  <div
+                                    key={trainerIndex}
+                                    className='grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-background/50 rounded-lg border'
+                                  >
+                                    <div className='md:col-span-1'>
+                                      <Label className='text-xs'>
+                                        Trainer Name
+                                      </Label>
                                       <Input
                                         value={trainer.name}
-                                        onChange={(e) => updateTrainer(tradeIndex, trainerIndex, 'name', e.target.value)}
-                                        placeholder="Full name"
-                                        className="mt-1"
+                                        onChange={(e) =>
+                                          updateTrainer(
+                                            tradeIndex,
+                                            trainerIndex,
+                                            "name",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder='Full name'
+                                        className='mt-1'
                                       />
                                     </div>
-                                    <div className="md:col-span-1">
-                                      <Label className="text-xs">Username</Label>
+                                    <div className='md:col-span-1'>
+                                      <Label className='text-xs'>
+                                        Username
+                                      </Label>
                                       <Input
                                         value={trainer.username}
-                                        onChange={(e) => updateTrainer(tradeIndex, trainerIndex, 'username', e.target.value)}
-                                        placeholder="Login username"
-                                        className="mt-1"
+                                        onChange={(e) =>
+                                          updateTrainer(
+                                            tradeIndex,
+                                            trainerIndex,
+                                            "username",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder='Login username'
+                                        className='mt-1'
                                       />
                                     </div>
-                                    <div className="md:col-span-1">
-                                      <Label className="text-xs">Password</Label>
+                                    <div className='md:col-span-1'>
+                                      <Label className='text-xs'>
+                                        Password
+                                      </Label>
                                       <Input
                                         value={trainer.password}
-                                        onChange={(e) => updateTrainer(tradeIndex, trainerIndex, 'password', e.target.value)}
-                                        placeholder="Login password"
-                                        type="password"
-                                        className="mt-1"
+                                        onChange={(e) =>
+                                          updateTrainer(
+                                            tradeIndex,
+                                            trainerIndex,
+                                            "password",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder='Login password'
+                                        type='password'
+                                        className='mt-1'
                                       />
                                     </div>
-                                    <div className="flex items-end">
+                                    <div className='flex items-end'>
                                       <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeTrainer(tradeIndex, trainerIndex)}
-                                        className="text-destructive hover:text-destructive"
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        onClick={() =>
+                                          removeTrainer(
+                                            tradeIndex,
+                                            trainerIndex
+                                          )
+                                        }
+                                        className='text-destructive hover:text-destructive'
                                       >
-                                        <X className="w-4 h-4" />
+                                        <X className='w-4 h-4' />
                                       </Button>
                                     </div>
                                   </div>
@@ -446,33 +540,33 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
                     ))}
 
                     <Button
-                      type="button"
-                      variant="outline"
+                      type='button'
+                      variant='outline'
                       onClick={addTrade}
-                      className="w-full border-dashed border-2"
+                      className='w-full border-dashed border-2'
                     >
-                      <Plus className="w-4 h-4 mr-2" />
+                      <Plus className='w-4 h-4 mr-2' />
                       Add Another Trade
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="flex justify-between">
+              <div className='flex justify-between'>
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCurrentStep('school')}
+                  type='button'
+                  variant='outline'
+                  onClick={() => setCurrentStep("school")}
                 >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  <ArrowLeft className='w-4 h-4 mr-2' />
                   Back to School Details
                 </Button>
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={onClose}>
+                <div className='flex gap-3'>
+                  <Button type='button' variant='outline' onClick={onClose}>
                     Cancel
                   </Button>
                   <Button onClick={handleFinalSubmit}>
-                    <Save className="w-4 h-4 mr-2" />
+                    <Save className='w-4 h-4 mr-2' />
                     Register School
                   </Button>
                 </div>

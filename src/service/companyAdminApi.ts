@@ -15,6 +15,18 @@ interface BlockPayload {
   pincode: string;
 }
 
+export interface SchoolPayload {
+  name: string;
+  uid: string;
+  location: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+  address: string;
+  blockId: string;
+  trades: string[];
+}
+
 /** States */
 export const createState = async (payload: StatePayload) => {
   try {
@@ -73,5 +85,24 @@ export const getBlocks = async () => {
     return res.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch blocks");
+  }
+};
+
+export const createSchool = async (payload: SchoolPayload) => {
+  try {
+    const response = await axiosInstance.post("/management/schools", payload);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to create school");
+  }
+};
+
+// Get all trades
+export const getTrades = async () => {
+  try {
+    const response = await axiosInstance.get("/management/trades");
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch trades");
   }
 };
