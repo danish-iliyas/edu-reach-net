@@ -90,7 +90,7 @@ export const getBlocks = async () => {
 
 export const createSchool = async (payload: SchoolPayload) => {
   try {
-    const response = await axiosInstance.post("/management/schools", payload);
+    const response = await axiosInstance.post("/management/schools/create-with-trainers", payload);
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to create school");

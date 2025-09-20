@@ -165,91 +165,89 @@ const SchoolRegistrationForm: React.FC<SchoolRegistrationFormProps> = ({
     setCurrentStep("trades");
   };
 
-  const handleFinalSubmit = async () => {
-    if (trades.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please add at least one trade",
-        variant: "destructive",
-      });
-      return;
-    }
+ const handleFinalSubmit = async () => {
+  if (trades.length === 0) {
+    toast({
+      title: "Error",
+      description: "Please add at least one trade",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    if (trades.some((t) => !t.tradeId)) {
-      toast({
-        title: "Error",
-        description: "Please select trades for all entries",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (trades.some((t) => !t.tradeId)) {
+    toast({
+      title: "Error",
+      description: "Please select trades for all entries",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const invalidTrainers = trades.some((t) =>
-      t.trainers.some(
-        (trainer) =>
-          !trainer.fullName.trim() ||
-          !trainer.email.trim() ||
-          !trainer.phone.trim() ||
-          !trainer.password.trim() ||
-          !trainer.coordinates.trim()
-      )
-    );
-    if (invalidTrainers) {
-      toast({
-        title: "Error",
-        description: "Please fill all trainer details",
-        variant: "destructive",
-      });
-      return;
-    }
+  const invalidTrainers = trades.some((t) =>
+    t.trainers.some(
+      (trainer) =>
+        !trainer.fullName.trim() ||
+        !trainer.email.trim() ||
+        !trainer.phone.trim() ||
+        !trainer.password.trim()
+    )
+  );
+  if (invalidTrainers) {
+    toast({
+      title: "Error",
+      description: "Please fill all trainer details",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    try {
-      const payload = {
-        uid: formData.uid,
-        name: formData.name,
-        address: formData.address,
-        blockId: formData.blockId,
-        location: {
-          type: "Point",
-          coordinates: [
-            parseFloat(formData.longitude),
-            parseFloat(formData.latitude),
-          ],
-        },
-        trades: trades.map((t) => ({
+  try {
+    const payload = {
+      uid: formData.uid,
+      name: formData.name,
+      address: formData.address,
+      blockId: formData.blockId,
+      location: {
+        type: "Point",
+        coordinates: [
+          parseFloat(formData.longitude),
+          parseFloat(formData.latitude),
+        ],
+      },
+      trainers: trades.flatMap((t) =>
+        t.trainers.map((tr) => ({
+          fullName: tr.fullName,
+          email: tr.email,
+          phone: tr.phone,
+          password: tr.password,
+          status: tr.status,
           tradeId: t.tradeId,
-          trainers: t.trainers.map((tr) => ({
-            fullName: tr.fullName,
-            email: tr.email,
-            phone: tr.phone,
-            password: tr.password,
-            status: tr.status,
-            location: {
-              type: "Point",
-              coordinates: tr.coordinates
-                .split(",")
-                .map((c) => parseFloat(c.trim())),
-            },
-          })),
-        })),
-      };
+        }))
+      ),
+    };
 
-      const response = await createSchool(payload);
+    console.log("✅ Final Payload:", payload);
 
-      toast({
-        title: "Success",
-        description: `School "${formData.name}" registered successfully`,
-      });
+    const response = await createSchool(payload);
+    console.log(payload)
 
-      onSuccess();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to register school",
-        variant: "destructive",
-      });
-    }
-  };
+    toast({
+      title: "Success",
+      description: `School "${formData.name}" registered successfully`,
+    });
+
+    onSuccess();
+  } catch (error) {
+    console.error(error);
+    toast({
+      title: "Error",
+      description: "Failed to register school",
+      variant: "destructive",
+    });
+  }
+};
+
 
   return (
     <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50'>
