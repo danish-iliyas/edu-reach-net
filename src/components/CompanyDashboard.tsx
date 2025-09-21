@@ -323,9 +323,9 @@ useEffect(() => {
   useEffect(() => {
     if (states.length === 0) return;
     const stats = states.map((state) => {
-      const stateId = state.id;
-      const stateDistricts = districts.filter((d) => d.stateId === stateId);
-      const stateBlocks = blocks.filter((b) => stateDistricts.some((d) => d.id === b.districtId));
+      const stateId = state._id || state.id;
+      const stateDistricts = districts.filter((d) => (d.stateId === stateId));
+      const stateBlocks = blocks.filter((b) => stateDistricts.some((d) => (d._id || d.id) === b.districtId));
       const stateSchools = schools.filter((s) => s.stateId === stateId);
       return {
         id: stateId,
@@ -563,8 +563,8 @@ useEffect(() => {
                         <SelectContent>
                           {states.map((state) => (
                             <SelectItem
-                              key={state.id}
-                              value={state.id}
+                              key={state._id || state.id}
+                              value={state._id || state.id}
                             >
                               {state.name}
                             </SelectItem>
