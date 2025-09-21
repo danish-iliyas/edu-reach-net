@@ -106,3 +106,41 @@ export const getTrades = async () => {
     throw new Error(error.response?.data?.message || "Failed to fetch trades");
   }
 };
+
+/** Fetch all schools */
+export const getSchools = async () => {
+  try {
+    const response = await axiosInstance.get("/management/schools");
+    return response.data; // returns array of schools
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch schools");
+  }
+};
+
+
+export interface SchoolDetailsPayload {
+  blockId: string;
+}
+
+export interface SchoolDetails {
+  _id: string;
+  name: string;
+  trades: string[];
+  trainers: string[];
+}
+
+/** Get school details by blockId */
+export const getSchoolDetailsByBlock = async (
+  blockId: string
+): Promise<SchoolDetails[]> => {
+  try {
+    const response = await axiosInstance.get(
+      `/management/schools/details?blockId=${blockId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch school details"
+    );
+  }
+};

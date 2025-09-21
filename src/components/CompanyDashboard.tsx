@@ -52,11 +52,8 @@ import {
 } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
-import { createState } from "@/service/companyAdminApi";
-import { getStates } from "@/service/companyAdminApi";
-import { createDistrict } from "@/service/companyAdminApi";
-import { getDistricts } from "@/service/companyAdminApi";
-import { createBlock } from "@/service/companyAdminApi";
+import { createState, getStates, createDistrict, getDistricts, createBlock, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
+
 
 interface CompanyDashboardProps {
   user: User;
@@ -200,6 +197,10 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       try {
         const data = await getStates();
         setStates(data); // [{ _id, name }]
+        setStatistics((prev: any) => ({
+          ...prev,
+          totalStates: data.length,
+        }));
       } catch (error) {
         console.error("Failed to fetch states", error);
       }
@@ -218,6 +219,46 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     };
     fetchDistricts();
   }, []);
+
+ useEffect(() => {
+  const fetchSchools = async () => {
+    try {
+      const data = await getSchools();
+      setSchools(data); // update schools state
+
+      // Update totalSchools count
+      setStatistics((prev: any) => ({
+        ...prev,
+        totalSchools: data.length,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch schools", error);
+    }
+  };
+
+  fetchSchools();
+}, []);
+
+useEffect(() => {
+  const fetchTrades = async () => {
+    try {
+      const data = await getTrades();
+      setTrades(data);
+
+      // Update statistics totalTrades
+      setStatistics((prev: any) => ({
+        ...prev,
+        totalTrades: data.length,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch trades", error);
+    }
+  };
+
+  fetchTrades();
+}, []);
+
+
 
   const handleAddDistrict = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,6 +318,28 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       });
     }
   };
+
+  // Compute state-wise statistics for dashboard
+  useEffect(() => {
+    if (states.length === 0) return;
+    const stats = states.map((state) => {
+      const stateId = state.id;
+      const stateDistricts = districts.filter((d) => d.stateId === stateId);
+      const stateBlocks = blocks.filter((b) => stateDistricts.some((d) => d.id === b.districtId));
+      const stateSchools = schools.filter((s) => s.stateId === stateId);
+      return {
+        id: stateId,
+        name: state.name,
+        districts: stateDistricts.length,
+        blocks: stateBlocks.length,
+        schools: stateSchools.length,
+      };
+    });
+    setStatistics((prev: any) => ({
+      ...prev,
+      stateWiseStats: stats,
+    }));
+  }, [states, districts, blocks, schools]);
 
   const StatCard = ({
     title,
@@ -382,7 +445,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 value={statistics.totalTrades || 0}
                 icon={Briefcase}
                 description='Available courses'
-                gradient='bg-gradient-to-br from-secondary to-secondary/80'
+                gradient='bg-gradient-to-br from-orange-500 to-orange-400/80'
               />
               <StatCard
                 title='Total Trainers'
@@ -500,8 +563,8 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         <SelectContent>
                           {states.map((state) => (
                             <SelectItem
-                              key={state._id || state.id}
-                              value={state._id || state.id}
+                              key={state.id}
+                              value={state.id}
                             >
                               {state.name}
                             </SelectItem>
