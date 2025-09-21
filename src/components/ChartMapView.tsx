@@ -26,7 +26,6 @@ const ChartMapView: React.FC<ChartMapViewProps> = ({
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Prepare PieChart data
     setChartData([
       { name: "States", value: states.length },
       { name: "Districts", value: districts.length },
@@ -42,19 +41,17 @@ const ChartMapView: React.FC<ChartMapViewProps> = ({
       attribution: "© OpenStreetMap contributors",
     }).addTo(map);
 
-    // Create custom SVG icon using lucide-react
     const svgIcon = ReactDOMServer.renderToString(
-      <SchoolIcon size={24} color="#4f46e5" />
+      <SchoolIcon size={28} color="#4f46e5" />
     );
 
     const customIcon = L.divIcon({
       html: svgIcon,
       className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 24],
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
     });
 
-    // Add markers
     schools.forEach((school) => {
       if (school.location?.coordinates?.length === 2) {
         const [lng, lat] = school.location.coordinates;
@@ -71,12 +68,12 @@ const ChartMapView: React.FC<ChartMapViewProps> = ({
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      {/* Pie Chart Box */}
+      {/* Donut Pie Chart Box */}
       <Card>
         <CardHeader>
           <CardTitle>Overview</CardTitle>
         </CardHeader>
-        <CardContent className="h-80">
+        <CardContent className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -85,7 +82,8 @@ const ChartMapView: React.FC<ChartMapViewProps> = ({
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={80}
+                innerRadius={50} // hollow center
+                outerRadius={100} // increase size
                 label
               >
                 {chartData.map((entry, index) => (
@@ -105,7 +103,7 @@ const ChartMapView: React.FC<ChartMapViewProps> = ({
           <CardTitle>Schools Location</CardTitle>
         </CardHeader>
         <CardContent>
-          <div id="schoolsMap" className="h-80 w-full rounded-lg" />
+          <div id="schoolsMap" className="h-96 w-full rounded-lg" />
         </CardContent>
       </Card>
     </div>
