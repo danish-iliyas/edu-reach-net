@@ -52,6 +52,7 @@ import {
 } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
+import ChartMapView from "./ChartMapView";
 import { StateWiseTable } from "./StateWiseTable";
 import { createState, getStates, createDistrict, getDistricts, createBlock, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
 
@@ -458,6 +459,16 @@ useEffect(() => {
               />
             </div>
 
+            {/* Chart & Map Section */}
+            <ChartMapView
+              schools={schools}
+              states={states}
+              districts={districts}
+              trades={trades}
+              trainers={trainers}
+            />
+            
+
             {/* State-wise Table Statistics */}
             <StateWiseTable data={statistics.stateWiseStats || []} />
           </TabsContent>
@@ -516,8 +527,8 @@ useEffect(() => {
                         <SelectContent>
                           {states.map((state) => (
                             <SelectItem
-                              key={state._id || state.id}
-                              value={state._id || state.id}
+                              key={state.id}
+                              value={state.id}
                             >
                               {state.name}
                             </SelectItem>
@@ -577,8 +588,8 @@ useEffect(() => {
                         <SelectContent>
                           {districts.map((district) => (
                             <SelectItem
-                              key={district._id || district.id}
-                              value={district._id || district.id}
+                              key={district.id}
+                              value={district.id}
                             >
                               {district.name}
                             </SelectItem>
@@ -868,9 +879,6 @@ useEffect(() => {
       {showSchoolForm && (
         <SchoolRegistrationForm
           companyId={user.companyId!}
-          states={states}
-          districts={districts}
-          blocks={blocks}
           onClose={() => setShowSchoolForm(false)}
           onSuccess={() => {
             setShowSchoolForm(false);
