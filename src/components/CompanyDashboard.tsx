@@ -52,6 +52,7 @@ import {
 } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
+import { StateWiseTable } from "./StateWiseTable";
 import { createState, getStates, createDistrict, getDistricts, createBlock, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
 
 
@@ -63,6 +64,7 @@ interface CompanyDashboardProps {
 const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   user,
   onLogout,
+  
 }) => {
   const [company, setCompany] = useState<Company | null>(null);
   const [states, setStates] = useState<State[]>([]);
@@ -456,57 +458,8 @@ useEffect(() => {
               />
             </div>
 
-            {/* State-wise Statistics */}
-            {statistics.stateWiseStats?.length > 0 && (
-              <Card className='backdrop-blur-sm bg-card/80'>
-                <CardHeader>
-                  <CardTitle>State-wise Distribution</CardTitle>
-                  <CardDescription>
-                    School and infrastructure breakdown by state
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-                    {statistics.stateWiseStats.map((state: any) => (
-                      <div
-                        key={state.id}
-                        className='p-4 rounded-lg border border-border/50 bg-background/50 hover:bg-background/80 transition-colors'
-                      >
-                        <h3 className='font-semibold text-lg mb-2'>
-                          {state.name}
-                        </h3>
-                        <div className='grid grid-cols-3 gap-2 text-center'>
-                          <div>
-                            <div className='text-xl font-bold text-primary'>
-                              {state.districts}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Districts
-                            </div>
-                          </div>
-                          <div>
-                            <div className='text-xl font-bold text-accent-foreground'>
-                              {state.blocks}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Blocks
-                            </div>
-                          </div>
-                          <div>
-                            <div className='text-xl font-bold text-secondary-foreground'>
-                              {state.schools}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Schools
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* State-wise Table Statistics */}
+            <StateWiseTable data={statistics.stateWiseStats || []} />
           </TabsContent>
 
           <TabsContent value='register' className='space-y-6'>
