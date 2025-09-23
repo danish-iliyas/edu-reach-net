@@ -52,11 +52,10 @@ import {
 } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
-import { createState } from "@/service/companyAdminApi";
-import { getStates } from "@/service/companyAdminApi";
-import { createDistrict } from "@/service/companyAdminApi";
-import { getDistricts } from "@/service/companyAdminApi";
-import { createBlock } from "@/service/companyAdminApi";
+import ChartMapView from "./ChartMapView";
+import { StateWiseTable } from "./StateWiseTable";
+import { createState, getStates, createDistrict, getDistricts, createBlock, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
+
 
 interface CompanyDashboardProps {
   user: User;
@@ -66,6 +65,7 @@ interface CompanyDashboardProps {
 const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   user,
   onLogout,
+  
 }) => {
   const [company, setCompany] = useState<Company | null>(null);
   const [states, setStates] = useState<State[]>([]);
@@ -200,6 +200,10 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       try {
         const data = await getStates();
         setStates(data); // [{ _id, name }]
+        setStatistics((prev: any) => ({
+          ...prev,
+          totalStates: data.length,
+        }));
       } catch (error) {
         console.error("Failed to fetch states", error);
       }
@@ -218,6 +222,46 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     };
     fetchDistricts();
   }, []);
+
+ useEffect(() => {
+  const fetchSchools = async () => {
+    try {
+      const data = await getSchools();
+      setSchools(data); // update schools state
+
+      // Update totalSchools count
+      setStatistics((prev: any) => ({
+        ...prev,
+        totalSchools: data.length,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch schools", error);
+    }
+  };
+
+  fetchSchools();
+}, []);
+
+useEffect(() => {
+  const fetchTrades = async () => {
+    try {
+      const data = await getTrades();
+      setTrades(data);
+
+      // Update statistics totalTrades
+      setStatistics((prev: any) => ({
+        ...prev,
+        totalTrades: data.length,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch trades", error);
+    }
+  };
+
+  fetchTrades();
+}, []);
+
+
 
   const handleAddDistrict = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,6 +321,28 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       });
     }
   };
+
+  // Compute state-wise statistics for dashboard
+  useEffect(() => {
+    if (states.length === 0) return;
+    const stats = states.map((state) => {
+      const stateId = state._id || state.id;
+      const stateDistricts = districts.filter((d) => (d.stateId === stateId));
+      const stateBlocks = blocks.filter((b) => stateDistricts.some((d) => (d._id || d.id) === b.districtId));
+      const stateSchools = schools.filter((s) => s.stateId === stateId);
+      return {
+        id: stateId,
+        name: state.name,
+        districts: stateDistricts.length,
+        blocks: stateBlocks.length,
+        schools: stateSchools.length,
+      };
+    });
+    setStatistics((prev: any) => ({
+      ...prev,
+      stateWiseStats: stats,
+    }));
+  }, [states, districts, blocks, schools]);
 
   const StatCard = ({
     title,
@@ -382,7 +448,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 value={statistics.totalTrades || 0}
                 icon={Briefcase}
                 description='Available courses'
-                gradient='bg-gradient-to-br from-secondary to-secondary/80'
+                gradient='bg-gradient-to-br from-orange-500 to-orange-400/80'
               />
               <StatCard
                 title='Total Trainers'
@@ -393,57 +459,18 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
               />
             </div>
 
-            {/* State-wise Statistics */}
-            {statistics.stateWiseStats?.length > 0 && (
-              <Card className='backdrop-blur-sm bg-card/80'>
-                <CardHeader>
-                  <CardTitle>State-wise Distribution</CardTitle>
-                  <CardDescription>
-                    School and infrastructure breakdown by state
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-                    {statistics.stateWiseStats.map((state: any) => (
-                      <div
-                        key={state.id}
-                        className='p-4 rounded-lg border border-border/50 bg-background/50 hover:bg-background/80 transition-colors'
-                      >
-                        <h3 className='font-semibold text-lg mb-2'>
-                          {state.name}
-                        </h3>
-                        <div className='grid grid-cols-3 gap-2 text-center'>
-                          <div>
-                            <div className='text-xl font-bold text-primary'>
-                              {state.districts}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Districts
-                            </div>
-                          </div>
-                          <div>
-                            <div className='text-xl font-bold text-accent-foreground'>
-                              {state.blocks}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Blocks
-                            </div>
-                          </div>
-                          <div>
-                            <div className='text-xl font-bold text-secondary-foreground'>
-                              {state.schools}
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              Schools
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Chart & Map Section */}
+            <ChartMapView
+              schools={schools}
+              states={states}
+              districts={districts}
+              trades={trades}
+              trainers={trainers}
+            />
+            
+
+            {/* State-wise Table Statistics */}
+            <StateWiseTable data={statistics.stateWiseStats || []} />
           </TabsContent>
 
           <TabsContent value='register' className='space-y-6'>
@@ -500,8 +527,8 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         <SelectContent>
                           {states.map((state) => (
                             <SelectItem
-                              key={state._id || state.id}
-                              value={state._id || state.id}
+                              key={state.id}
+                              value={state.id}
                             >
                               {state.name}
                             </SelectItem>
@@ -561,8 +588,8 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                         <SelectContent>
                           {districts.map((district) => (
                             <SelectItem
-                              key={district._id || district.id}
-                              value={district._id || district.id}
+                              key={district.id}
+                              value={district.id}
                             >
                               {district.name}
                             </SelectItem>
@@ -852,9 +879,6 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       {showSchoolForm && (
         <SchoolRegistrationForm
           companyId={user.companyId!}
-          states={states}
-          districts={districts}
-          blocks={blocks}
           onClose={() => setShowSchoolForm(false)}
           onSuccess={() => {
             setShowSchoolForm(false);
