@@ -33,7 +33,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
     try {
       const res = await loginUser({ email, password }, role);
-
+       console.log("Login Response:", res);
       // Map API user to your local User type
       const user: User = {
         id: res.user._id,
