@@ -112,6 +112,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
     const [trainer, setTrainer] = useState(null);
     const [school, setSchool] = useState(null);
     const [trade, setTrade] = useState(null);
+    
     const [company, setCompany] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [todayAttendance, setTodayAttendance] = useState(null);
@@ -127,9 +128,12 @@ const TrainerDashboard = ({ user, onLogout }) => {
         setTrainer(trainerData);
 
         // For now, school/trade/company are mocked as they don't come from the initial login user object.
-        const mockSchool = { id: 1, name: 'Vocational Training Institute' };
-        const mockTrade = { id: 1, name: 'Certified Welder' };
-        const mockCompany = { id: 101, name: 'SkillBuilders Inc.' };
+        const mockName = {name: user.username };
+        const mockSchool = { id: 1, name: user.schoolName || 'Springfield Technical School' };
+        const mockTrade = { id: 1, name: user.tradeName };
+        const mockCompany = { id: 101, name: user.companyName || 'Tech Solutions Inc.' };
+       // const mockTrade={ id: 1, name: user.tradeName || 'Certified Welder' };
+       
         setSchool(mockSchool);
         setTrade(mockTrade);
         setCompany(mockCompany);
@@ -413,11 +417,13 @@ const MockLoginPage = ({ onLogin }) => {
     // This simulates the login page you provided.
     const handleMockLogin = () => {
        const user = {
-           id: "68cf056d44419312fff3756f",
-           username: "DANISH ILIYAS AHAMAD",
-           email: "danish@gmail.com",
-           role: "trainer",
-           token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4Y2YwNTZkNDQ0MTkzMTJmZmYzNzU2ZiIsImNvbXBhbnlJZCI6IjY4Yjk2YjE4NzA5ZDdmNTFmNTRhNzBkOSIsImlhdCI6MTc1ODY1NDE0MywiZXhwIjoxNzYxMjQyNDQzfQ.i-60aN-9YyK2j8J5aYq2b-2gR8c3pP6H7qX3gZ8nZ7A"
+           id: id,
+           username: username,
+           email: email,
+           role: role,
+           token: token,
+           companyName: companyName,
+           schoolName: schoolName,
        };
        localStorage.setItem("user", JSON.stringify(user));
        localStorage.setItem("token", user.token);

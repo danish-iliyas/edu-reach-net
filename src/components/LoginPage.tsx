@@ -41,6 +41,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         email: res.user.email,
         role: role.toLowerCase(), // "superadmin" | "companyadmin" | "trainer"
         token: res.token,
+        companyName: res.user.companyId.name || undefined,
+        schoolName: res.user.schoolId.name || undefined,
+        tradeName: res.user.tradeId?.name || undefined,
+
       };
 
       // ✅ Save to localStorage
