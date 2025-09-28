@@ -1,33 +1,27 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  GraduationCap,
+  Clock,
+  CheckCircle,
+  XCircle,
+  User,
+  BookOpen,
+  TrendingUp,
+  Building,
+  School,
+  Calendar as CalendarIcon,
+  Grid2x2Check,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getTrainerCalendar } from "../service/trainerApi";
 
-// --- Helper Components & Mocks (Normally in separate files) ---
-// To make this a single runnable file, we'll mock the UI components and hooks.
-
-const Card = ({ children, className = "" }) => (
-  <div
-    className={`bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl shadow-md transition-all duration-300 ${className}`}
-  >
-    {children}
-  </div>
-);
-const CardHeader = ({ children, className = "" }) => (
-  <div className={`p-6 ${className}`}>{children}</div>
-);
-const CardTitle = ({ children, className = "" }) => (
-  <h3
-    className={`text-lg font-semibold text-gray-900 dark:text-white ${className}`}
-  >
-    {children}
-  </h3>
-);
-const CardDescription = ({ children, className = "" }) => (
-  <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>
-    {children}
-  </p>
-);
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 pt-0 ${className}`}>{children}</div>
-);
+// Button Component
 const Button = ({ children, className = "", ...props }) => (
   <button
     className={`inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background px-4 py-2 ${className}`}
@@ -36,6 +30,8 @@ const Button = ({ children, className = "", ...props }) => (
     {children}
   </button>
 );
+
+// Badge Component
 const Badge = ({ children, className = "" }) => (
   <span
     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${className}`}
@@ -44,64 +40,65 @@ const Badge = ({ children, className = "" }) => (
   </span>
 );
 
-// A simple mock for the Calendar component (react-day-picker)
-const Calendar = ({
-  className,
-  modifiers,
-  modifiersStyles,
-  selected,
-  onSelect,
-}) => {
-  // This is a simplified representation. A real implementation is complex.
-  // For demonstration, we'll just show a placeholder.
+// Calendar Component
+const Calendar = ({ selected, onSelect, calendarData }) => {
+  const daysInMonth = new Date(
+    selected.getFullYear(),
+    selected.getMonth() + 1,
+    0
+  ).getDate();
+
+  const getAttendanceForDate = (date) => {
+    const key = date.toISOString().split("T")[0];
+    return calendarData[key] || null;
+  };
+
   return (
-    <div
-      className={`p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50 ${className}`}
-    >
+    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50">
       <p className="text-center font-bold text-gray-800 dark:text-gray-200 mb-2">
         {selected.toLocaleDateString("en-US", {
           month: "long",
           year: "numeric",
         })}
       </p>
+
       <div className="grid grid-cols-7 gap-2 text-center text-xs text-gray-500 dark:text-gray-400">
         {["S", "M", "T", "W", "T", "F", "S"].map((d, index) => (
-          <div key={`${d}-${index}`}>{d}</div>
+          <div key={index}>{d}</div>
         ))}
       </div>
+
       <div className="grid grid-cols-7 gap-1 mt-2">
-        {/* Dummy calendar days */}
-        {[...Array(31).keys()].map((i) => {
+        {[...Array(daysInMonth).keys()].map((i) => {
           const day = i + 1;
-          const isSelected = selected.getDate() === day;
           const date = new Date(
             selected.getFullYear(),
             selected.getMonth(),
             day
           );
-          const isPresent = modifiers.present(date);
-          const isAbsent = modifiers.absent(date);
+          const dayData = getAttendanceForDate(date);
 
           let style = {};
-          if (isPresent) style = modifiersStyles.present;
-          if (isAbsent) style = modifiersStyles.absent;
+          if (dayData?.status === "present")
+            style = { backgroundColor: "#22c55e", color: "white" };
+          if (dayData?.status === "absent")
+            style = { backgroundColor: "#ef4444", color: "white" };
 
           return (
             <div
               key={i}
               onClick={() => onSelect(date)}
               style={style}
-              className={`w-9 h-9 flex items-center justify-center rounded-full cursor-pointer text-sm ${
-                isSelected
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-gray-200 dark:hover:bg-gray-700"
-              } ${
-                isPresent || isAbsent
-                  ? "text-white font-bold"
-                  : "text-gray-700 dark:text-gray-300"
+              className={`relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer text-sm ${
+                selected.getDate() === day ? "bg-blue-600 text-white" : ""
               }`}
             >
               {day}
+              {dayData?.totalHour > 0 && (
+                <span className="absolute bottom-0 right-0 text-xs text-gray-700 dark:text-gray-200">
+                  {dayData.totalHour}h
+                </span>
+              )}
             </div>
           );
         })}
@@ -110,214 +107,14 @@ const Calendar = ({
   );
 };
 
-// --- Lucide React Icon Mocks (as inline SVGs) ---
-const Icon = ({ children, className }) => (
-  <div className={className}>{children}</div>
-);
-const GraduationCap = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c3 3 9 3 12 0v-5" />
-    </svg>
-  </Icon>
-);
-const CalendarIcon = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
-    </svg>
-  </Icon>
-);
-const CheckCircle = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  </Icon>
-);
-const XCircle = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="15" y1="9" x2="9" y2="15" />
-      <line x1="9" y1="9" x2="15" y2="15" />
-    </svg>
-  </Icon>
-);
-const Clock = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  </Icon>
-);
-const User = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  </Icon>
-);
-const BookOpen = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </svg>
-  </Icon>
-);
-const TrendingUp = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-      <polyline points="17 6 23 6 23 12" />
-    </svg>
-  </Icon>
-);
-const Building = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="4" y="2" width="16" height="20" rx="2" />
-      <path d="M9 22v-4h6v4" />
-      <path d="M8 6h.01" />
-      <path d="M16 6h.01" />
-      <path d="M12 6h.01" />
-      <path d="M12 10h.01" />
-      <path d="M12 14h.01" />
-      <path d="M16 10h.01" />
-      <path d="M16 14h.01" />
-      <path d="M8 10h.01" />
-      <path d="M8 14h.01" />
-    </svg>
-  </Icon>
-);
-const School = ({ className }) => (
-  <Icon className={className}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m4 6 8-4 8 4" />
-      <path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2" />
-      <path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4" />
-      <path d="M18 5v17" />
-      <path d="M6 5v17" />
-      <path d="M12 5v17" />
-    </svg>
-  </Icon>
-);
-
-// --- Toast Notification System ---
+// Toaster Notification
 const Toaster = () => (
   <div
     id="toaster-container"
     className="fixed top-5 right-5 z-[100] space-y-2"
   ></div>
 );
+
 const useToast = () => {
   const toast = ({ title, description, variant = "default" }) => {
     const container = document.getElementById("toaster-container");
@@ -346,10 +143,7 @@ const useToast = () => {
 
     toastElement.className = `w-80 p-4 rounded-lg shadow-2xl border ${bgColor} ${textColor} ${borderColor} animate-slide-in-right`;
     toastElement.id = toastId;
-    toastElement.innerHTML = `
-            <p class="font-bold">${title}</p>
-            <p class="text-sm">${description}</p>
-        `;
+    toastElement.innerHTML = `<p class="font-bold">${title}</p><p class="text-sm">${description}</p>`;
     container.appendChild(toastElement);
 
     setTimeout(() => {
@@ -360,70 +154,81 @@ const useToast = () => {
   return { toast };
 };
 
-// --- Main TrainerDashboard Component ---
+// Main TrainerDashboard Component
 const TrainerDashboard = ({ user, onLogout }) => {
   const [trainer, setTrainer] = useState(null);
   const [school, setSchool] = useState(null);
   const [trade, setTrade] = useState(null);
-
   const [company, setCompany] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isMarking, setIsMarking] = useState(false);
-
+  const [calendarData, setCalendarData] = useState({});
   const { toast } = useToast();
 
-  // Fetches the trainer's data. In a real app, this would be an API call.
-  const loadTrainerData = useCallback(() => {
-    // Use the logged-in user's data directly
-    const trainerData = { id: user.id, name: user.username, ...user };
-    setTrainer(trainerData);
+  const didLoadRef = useRef(false); // ✅ ensures API calls only once
 
-    // For now, school/trade/company are mocked as they don't come from the initial login user object.
-    const mockName = { name: user.username };
-    const mockSchool = {
+  // Load Trainer & Calendar Data
+  const loadTrainerData = useCallback(() => {
+    if (!user) return;
+
+    setTrainer({ id: user.id, name: user.username, ...user });
+    setSchool({
       id: 1,
       name: user.schoolName || "Springfield Technical School",
-    };
-    const mockTrade = { id: 1, name: user.tradeName };
-    const mockCompany = {
-      id: 101,
-      name: user.companyName || "Tech Solutions Inc.",
-    };
-    // const mockTrade={ id: 1, name: user.tradeName || 'Certified Welder' };
-
-    setSchool(mockSchool);
-    setTrade(mockTrade);
-    setCompany(mockCompany);
-
-    // TODO: In a real app, you would fetch all attendance records from your API here
-    const todayStr = new Date().toISOString().split("T")[0];
-    const mockAttendance = [
-      {
-        id: "1",
-        trainerId: user.id,
-        date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-        status: "present",
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    setAttendance(mockAttendance);
-    const todayRecord = mockAttendance.find((a) => a.date === todayStr);
-    setTodayAttendance(todayRecord || null);
+    });
+    setTrade({ id: 1, name: user.tradeName || "Certified Welder" });
+    setCompany({ id: 101, name: user.companyName || "Tech Solutions Inc." });
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      loadTrainerData();
-    }
-  }, [user, loadTrainerData]);
+  const loadCalendarData = useCallback(async () => {
+    try {
+      const data = await getTrainerCalendar(); // { "2025-09-28": { status: "present", totalHour: 5 } }
+      setCalendarData(data);
 
-  const markAttendance = (statusClicked) => {
-    if (!user || !user.id) {
+      const attendanceArray = Object.keys(data).map((dateStr) => ({
+        date: dateStr,
+        status: data[dateStr].status,
+        totalHour: data[dateStr].totalHour,
+      }));
+      setAttendance(attendanceArray);
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayRecord = data[todayStr];
+      setTodayAttendance(
+        todayRecord
+          ? {
+              date: todayStr,
+              status: todayRecord.status,
+              totalHour: todayRecord.totalHour,
+              createdAt: new Date().toISOString(),
+            }
+          : null
+      );
+    } catch (error) {
       toast({
-        title: "Authentication Error",
-        description: "User ID is missing.",
+        title: "Error",
+        description: error.message || "Failed to load calendar",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (user && !didLoadRef.current) {
+      didLoadRef.current = true;
+      loadTrainerData();
+      loadCalendarData();
+    }
+  }, [user, loadTrainerData, loadCalendarData]);
+
+  // Attendance Marking
+  const markAttendance = (statusClicked) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User ID missing",
         variant: "destructive",
       });
       return;
@@ -435,7 +240,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
       if (!token) {
         toast({
           title: "Authentication Error",
-          description: "You are not logged in.",
+          description: "Login first",
           variant: "destructive",
         });
         setIsMarking(false);
@@ -448,7 +253,6 @@ const TrainerDashboard = ({ user, onLogout }) => {
         longitude,
         status: statusClicked,
       };
-
       try {
         const response = await fetch(
           "http://localhost:3000/api/trainers/mark-daily-status",
@@ -461,45 +265,38 @@ const TrainerDashboard = ({ user, onLogout }) => {
             body: JSON.stringify(payload),
           }
         );
-
         const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Unknown error");
 
-        if (!response.ok) {
-          throw new Error(result.message || "An unknown error occurred.");
-        }
+        toast({
+          title: "Attendance Updated",
+          description: result.message,
+          variant: result.data.status === "present" ? "success" : "destructive",
+        });
 
-        // ✅ Use the data from the API response
-        if (result.data && result.message) {
-          toast({
-            title: "Attendance Update",
-            description: result.message, // Show the server message
-            variant:
-              result.data.status === "present" ? "success" : "destructive", // Style based on actual status
-          });
+        const today = new Date(result.data.date).toISOString().split("T")[0];
+        const newRecord = {
+          id: result.data._id,
+          trainerId: result.data.trainerId,
+          date: today,
+          status: result.data.status,
+          totalHour: result.data.totalHour || 0,
+          createdAt: result.data.createdAt,
+        };
 
-          // Update UI state with the server's response
-          const today = new Date(result.data.date).toISOString().split("T")[0];
-          const newRecord = {
-            id: result.data._id,
-            trainerId: result.data.trainerId,
-            date: today,
-            status: result.data.status, // Use status from response
-            createdAt: result.data.createdAt,
-          };
-          setTodayAttendance(newRecord);
-          setAttendance((prev) => [
-            ...prev.filter((a) => a.date !== today),
-            newRecord,
-          ]);
-        } else {
-          throw new Error("Invalid response format from server.");
-        }
-      } catch (error) {
-        console.error("Failed to mark attendance:", error);
+        setTodayAttendance(newRecord);
+        setCalendarData((prev) => ({
+          ...prev,
+          [today]: { status: newRecord.status, totalHour: newRecord.totalHour },
+        }));
+        setAttendance((prev) => [
+          ...prev.filter((a) => a.date !== today),
+          newRecord,
+        ]);
+      } catch (err) {
         toast({
           title: "Error",
-          description:
-            error.message || "Could not mark attendance. Please try again.",
+          description: err.message || "Failed",
           variant: "destructive",
         });
       } finally {
@@ -509,54 +306,39 @@ const TrainerDashboard = ({ user, onLogout }) => {
 
     if (statusClicked === "present") {
       navigator.geolocation.getCurrentPosition(
-        (position) =>
-          handleApiCall(position.coords.latitude, position.coords.longitude),
+        (pos) => handleApiCall(pos.coords.latitude, pos.coords.longitude),
         () => {
           toast({
-            title: "Location Access Denied",
-            description: "Please enable location to mark yourself present.",
+            title: "Location Denied",
+            description: "Enable location to mark present",
             variant: "destructive",
           });
-          // Still mark as absent if location is denied but they clicked present?
-          // Let's just stop the process. User can click "absent" if needed.
           setIsMarking(false);
         }
       );
     } else {
-      // 'absent'
       handleApiCall();
     }
   };
 
-  const getAttendanceForDate = (date) => {
-    if (!date) return null;
-    const dateStr = date.toISOString().split("T")[0];
-    return attendance.find((a) => a.date === dateStr) || null;
-  };
-
+  // Attendance Stats
   const getAttendanceStats = () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-
     const monthlyAttendance = attendance.filter((a) => {
-      const attendanceDate = new Date(a.date);
-      return (
-        attendanceDate.getMonth() === currentMonth &&
-        attendanceDate.getFullYear() === currentYear
-      );
+      const d = new Date(a.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
     const presentDays = monthlyAttendance.filter(
       (a) => a.status === "present"
     ).length;
     const totalDays = monthlyAttendance.length;
-    const percentage =
-      totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
     return {
       presentDays,
-      totalDays,
-      percentage,
       absentDays: totalDays - presentDays,
+      totalDays,
+      percentage: totalDays ? Math.round((presentDays / totalDays) * 100) : 0,
     };
   };
 
@@ -588,13 +370,12 @@ const TrainerDashboard = ({ user, onLogout }) => {
     </div>
   );
 
-  if (!trainer) {
+  if (!trainer)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Loading Trainer Data...
+        Loading...
       </div>
     );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 font-sans">
@@ -611,7 +392,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
                 Trainer Portal
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Welcome, {trainer.name ? trainer.name.split(" ")[0] : "..."}
+                Welcome, {trainer.name?.split(" ")[0] || "..."}
               </p>
             </div>
           </div>
@@ -625,14 +406,14 @@ const TrainerDashboard = ({ user, onLogout }) => {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left Column */}
           <div className="lg:col-span-1 space-y-8">
+            {/* Profile Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-blue-500" />
-                  Profile Information
+                  <User className="w-5 h-5 text-blue-500" /> Profile Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5">
+              <CardContent className="space-y-5 capitalize">
                 <ProfileDetail
                   icon={<User className="w-5 h-5" />}
                   label="Name"
@@ -660,11 +441,11 @@ const TrainerDashboard = ({ user, onLogout }) => {
               </CardContent>
             </Card>
 
+            {/* Today's Attendance Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-blue-500" />
-                  Today's Status
+                  <Clock className="w-5 h-5 text-blue-500" /> Today's Status
                 </CardTitle>
                 <CardDescription>
                   {new Date().toLocaleDateString("en-US", {
@@ -718,20 +499,29 @@ const TrainerDashboard = ({ user, onLogout }) => {
                     <p className="text-muted-foreground text-sm">
                       Please mark your attendance for today:
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          onClick={() => markAttendance("present")}
+                          disabled={isMarking}
+                          className="bg-green-600 text-white hover:bg-green-700 disabled:bg-green-400 h-12 text-base font-bold"
+                        >
+                          <CheckCircle className="w-5 h-5 mr-2" /> Present
+                        </Button>
+                        <Button
+                          onClick={() => markAttendance("absent")}
+                          disabled={isMarking}
+                          className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400 h-12 text-base font-bold"
+                        >
+                          <XCircle className="w-5 h-5 mr-2" /> Absent
+                        </Button>
+                      </div>
                       <Button
-                        onClick={() => markAttendance("present")}
+                        onClick={() => markAttendance("checkout")}
                         disabled={isMarking}
-                        className="bg-green-600 text-white hover:bg-green-700 disabled:bg-green-400 h-12 text-base font-bold"
+                        className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 h-12 text-base font-bold"
                       >
-                        <CheckCircle className="w-5 h-5 mr-2" /> Present
-                      </Button>
-                      <Button
-                        onClick={() => markAttendance("absent")}
-                        disabled={isMarking}
-                        className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400 h-12 text-base font-bold"
-                      >
-                        <XCircle className="w-5 h-5 mr-2" /> Absent
+                        <Grid2x2Check className="w-5 h-5 mr-2" /> Check Out
                       </Button>
                     </div>
                     {isMarking && (
@@ -747,11 +537,12 @@ const TrainerDashboard = ({ user, onLogout }) => {
 
           {/* Right Column */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Monthly Overview */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <TrendingUp className="w-5 h-5 text-blue-500" />
-                  Monthly Overview
+                  <TrendingUp className="w-5 h-5 text-blue-500" /> Monthly
+                  Overview
                 </CardTitle>
                 <CardDescription>
                   Your attendance summary for the current month.
@@ -778,30 +569,21 @@ const TrainerDashboard = ({ user, onLogout }) => {
                 />
               </CardContent>
             </Card>
+
+            {/* Attendance Calendar */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <CalendarIcon className="w-5 h-5 text-blue-500" />
-                  Attendance Calendar
+                  <CalendarIcon className="w-5 h-5 text-blue-500" /> Attendance
+                  Calendar
                 </CardTitle>
                 <CardDescription>View your attendance history.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Calendar
-                  mode="single"
                   selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  className="w-full"
-                  modifiers={{
-                    present: (date) =>
-                      getAttendanceForDate(date)?.status === "present",
-                    absent: (date) =>
-                      getAttendanceForDate(date)?.status === "absent",
-                  }}
-                  modifiersStyles={{
-                    present: { backgroundColor: "#22c55e", color: "white" },
-                    absent: { backgroundColor: "#ef4444", color: "white" },
-                  }}
+                  onSelect={setSelectedDate}
+                  calendarData={calendarData}
                 />
               </CardContent>
             </Card>
