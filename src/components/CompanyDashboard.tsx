@@ -55,7 +55,7 @@ import SchoolRegistrationForm from "./SchoolRegistrationForm";
 import ChartMapView from "./ChartMapView";
 import { StateWiseTable } from "./StateWiseTable";
 // FIX: Added getBlocks to the import list
-import { createState, getStates, createDistrict, getDistricts, createBlock, getBlocks, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
+import { createState, getStates, createDistrict, getDistricts, createBlock, getBlocks, getSchools, getTrades, getSchoolDetailsByBlock, getAllDetailsByCompany } from "@/service/companyAdminApi";
 
 
 interface CompanyDashboardProps {
@@ -332,26 +332,36 @@ useEffect(() => {
     }
   };
 
-  useEffect(() => {
-    if (states.length === 0) return;
-    const stats = states.map((state) => {
-      const stateId = state._id || state.id;
-      const stateDistricts = districts.filter((d) => (d.stateId === stateId));
-      const stateBlocks = blocks.filter((b) => stateDistricts.some((d) => (d._id || d.id) === b.districtId));
-      const stateSchools = schools.filter((s) => s.stateId === stateId);
-      return {
-        id: stateId,
-        name: state.name,
-        districts: stateDistricts.length,
-        blocks: stateBlocks.length,
-        schools: stateSchools.length,
-      };
-    });
-    setStatistics((prev: any) => ({
-      ...prev,
-      stateWiseStats: stats,
-    }));
-  }, [states, districts, blocks, schools]);
+ useEffect(() => {
+  const fetchCompanyDetails = async () => {
+    try {
+      const data = await getAllDetailsByCompany();
+
+      // Format to match StateWiseTable props
+      const formattedStats = data.map((item: any) => ({
+        id: item._id,
+        name: item.name,
+        districts: item.districtCount || 0,
+        blocks: item.blockCount || 0,
+        schools: item.schoolCount || 0,
+      }));
+
+      setStatistics((prev: any) => ({
+        ...prev,
+        stateWiseStats: formattedStats,
+        totalStates: data.length,
+        totalSchools: formattedStats.reduce((sum: number, s: any) => sum + s.schools, 0),
+        totalTrainers: trainers.length, // still from storage
+        totalTrades: trades.length,     // still from trades API
+      }));
+    } catch (error) {
+      console.error("Failed to fetch company details", error);
+    }
+  };
+
+  fetchCompanyDetails();
+}, [trainers, trades]);
+
 
   const StatCard = ({
     title,

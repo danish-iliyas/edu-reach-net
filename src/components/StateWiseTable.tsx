@@ -17,6 +17,7 @@ interface StateStat {
   schools: number
 }
 
+
 interface StateWiseTableProps {
   data: StateStat[]
 }

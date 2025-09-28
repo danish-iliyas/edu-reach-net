@@ -46,6 +46,7 @@ export const getStates = async () => {
   }
 };
 
+
 /** Districts */
 export const createDistrict = async (payload: DistrictPayload) => {
   try {
@@ -142,5 +143,14 @@ export const getSchoolDetailsByBlock = async (
     throw new Error(
       error.response?.data?.message || "Failed to fetch school details"
     );
+  }
+};
+
+export const getAllDetailsByCompany = async () => {
+  try {
+    const res = await axiosInstance.get("/companyadmins/getAllDetaileByCompany");
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch getAllDetaileByCompany");
   }
 };
