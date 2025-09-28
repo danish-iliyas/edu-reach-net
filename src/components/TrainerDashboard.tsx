@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getTrainerCalendar } from "../service/trainerApi";
+import { getTrainerCalendar, checkoutTrainer } from "../service/trainerApi";
 
 // Button Component
 const Button = ({ children, className = "", ...props }) => (
@@ -41,6 +41,7 @@ const Badge = ({ children, className = "" }) => (
 );
 
 // Calendar Component
+// Calendar Component with TailwindCSS Tooltip
 const Calendar = ({ selected, onSelect, calendarData }) => {
   const daysInMonth = new Date(
     selected.getFullYear(),
@@ -84,19 +85,29 @@ const Calendar = ({ selected, onSelect, calendarData }) => {
           if (dayData?.status === "absent")
             style = { backgroundColor: "#ef4444", color: "white" };
 
+          const tooltipText = dayData
+            ? `${
+                dayData.status.charAt(0).toUpperCase() + dayData.status.slice(1)
+              }${
+                dayData.totalHour ? ` - Total Hours: ${dayData.totalHour}h` : ""
+              }`
+            : "";
+
           return (
             <div
               key={i}
               onClick={() => onSelect(date)}
-              style={style}
-              className={`relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer text-sm ${
+              className={`relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer text-sm group ${
                 selected.getDate() === day ? "bg-blue-600 text-white" : ""
               }`}
+              style={style}
             >
               {day}
-              {dayData?.totalHour > 0 && (
-                <span className="absolute bottom-0 right-0 text-xs text-gray-700 dark:text-gray-200">
-                  {dayData.totalHour}h
+
+              {/* Tooltip */}
+              {tooltipText && (
+                <span className="absolute bottom-full mb-2 w-max max-w-xs px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 whitespace-nowrap pointer-events-none">
+                  {tooltipText}
                 </span>
               )}
             </div>
@@ -154,7 +165,6 @@ const useToast = () => {
   return { toast };
 };
 
-// Main TrainerDashboard Component
 const TrainerDashboard = ({ user, onLogout }) => {
   const [trainer, setTrainer] = useState(null);
   const [school, setSchool] = useState(null);
@@ -167,12 +177,11 @@ const TrainerDashboard = ({ user, onLogout }) => {
   const [calendarData, setCalendarData] = useState({});
   const { toast } = useToast();
 
-  const didLoadRef = useRef(false); // ✅ ensures API calls only once
+  const didLoadRef = useRef(false);
 
-  // Load Trainer & Calendar Data
+  // Load Trainer & Calendar
   const loadTrainerData = useCallback(() => {
     if (!user) return;
-
     setTrainer({ id: user.id, name: user.username, ...user });
     setSchool({
       id: 1,
@@ -184,7 +193,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
 
   const loadCalendarData = useCallback(async () => {
     try {
-      const data = await getTrainerCalendar(); // { "2025-09-28": { status: "present", totalHour: 5 } }
+      const data = await getTrainerCalendar();
       setCalendarData(data);
 
       const attendanceArray = Object.keys(data).map((dateStr) => ({
@@ -223,7 +232,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
     }
   }, [user, loadTrainerData, loadCalendarData]);
 
-  // Attendance Marking
+  // MARK ATTENDANCE
   const markAttendance = (statusClicked) => {
     if (!user?.id) {
       toast({
@@ -319,6 +328,67 @@ const TrainerDashboard = ({ user, onLogout }) => {
     } else {
       handleApiCall();
     }
+  };
+
+  // CHECKOUT FUNCTION (moved outside)
+  const handleCheckout = () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User ID missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsMarking(true);
+
+    const performCheckout = async (latitude?: number, longitude?: number) => {
+      try {
+        const payload = { latitude, longitude };
+        const result = await checkoutTrainer(payload);
+
+        toast({
+          title: "Checked Out",
+          description: result.message || "You have successfully checked out",
+          variant: "success",
+        });
+
+        const todayStr = new Date().toISOString().split("T")[0];
+        const newRecord = {
+          date: todayStr,
+          status: "checkout",
+          totalHour: result.totalHour || 0,
+          createdAt: new Date().toISOString(),
+        };
+
+        setTodayAttendance(newRecord);
+        setCalendarData((prev) => ({
+          ...prev,
+          [todayStr]: {
+            status: newRecord.status,
+            totalHour: newRecord.totalHour,
+          },
+        }));
+        setAttendance((prev) => [
+          ...prev.filter((a) => a.date !== todayStr),
+          newRecord,
+        ]);
+      } catch (err: any) {
+        toast({
+          title: "Checkout Failed",
+          description: err.message || "Something went wrong",
+          variant: "destructive",
+        });
+      } finally {
+        setIsMarking(false);
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => performCheckout(pos.coords.latitude, pos.coords.longitude),
+      () => performCheckout()
+    );
   };
 
   // Attendance Stats
@@ -517,7 +587,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
                         </Button>
                       </div>
                       <Button
-                        onClick={() => markAttendance("checkout")}
+                        onClick={handleCheckout}
                         disabled={isMarking}
                         className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400 h-12 text-base font-bold"
                       >
