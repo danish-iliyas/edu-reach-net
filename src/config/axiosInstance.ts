@@ -1,7 +1,11 @@
 import axios from "axios";
 
+const isLocal = window.location.hostname === "localhost";
+
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: isLocal
+    ? "http://localhost:3000/api"   // Local development
+    : "https://nsqf.onrender.com/api", // Production (Render)
   headers: {
     "Content-Type": "application/json",
   },
