@@ -343,7 +343,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
 
     setIsMarking(true);
 
-    const performCheckout = async (latitude?: number, longitude?: number) => {
+    const performCheckout = async (latitude, longitude) => {
       try {
         const payload = { latitude, longitude };
         const result = await checkoutTrainer(payload);
@@ -374,7 +374,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
           ...prev.filter((a) => a.date !== todayStr),
           newRecord,
         ]);
-      } catch (err: any) {
+      } catch (err) {
         toast({
           title: "Checkout Failed",
           description: err.message || "Something went wrong",
@@ -385,9 +385,17 @@ const TrainerDashboard = ({ user, onLogout }) => {
       }
     };
 
+    // Request geolocation
     navigator.geolocation.getCurrentPosition(
       (pos) => performCheckout(pos.coords.latitude, pos.coords.longitude),
-      () => performCheckout()
+      (error) => {
+        toast({
+          title: "Checkout Denied",
+          description: "Location access is required to checkout.",
+          variant: "destructive",
+        });
+        setIsMarking(false);
+      }
     );
   };
 
