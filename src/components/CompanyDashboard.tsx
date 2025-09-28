@@ -54,7 +54,8 @@ import { useToast } from "@/hooks/use-toast";
 import SchoolRegistrationForm from "./SchoolRegistrationForm";
 import ChartMapView from "./ChartMapView";
 import { StateWiseTable } from "./StateWiseTable";
-import { createState, getStates, createDistrict, getDistricts, createBlock, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
+// FIX: Added getBlocks to the import list
+import { createState, getStates, createDistrict, getDistricts, createBlock, getBlocks, getSchools, getTrades, getSchoolDetailsByBlock } from "@/service/companyAdminApi";
 
 
 interface CompanyDashboardProps {
@@ -104,22 +105,9 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
 
     const companyData = storage.getCompanyById(user.companyId);
     setCompany(companyData);
-
-    const statesData = storage.getStates(user.companyId);
-    const districtsData = storage.getDistricts(user.companyId);
-    const blocksData = storage.getBlocks(user.companyId);
-    const schoolsData = storage.getSchools(user.companyId);
-    const tradesData = storage.getTrades(user.companyId);
+    
     const trainersData = storage.getTrainers(user.companyId);
-    const stats = storage.getStatistics(user.companyId);
-
-    setStates(statesData);
-    setDistricts(districtsData);
-    setBlocks(blocksData);
-    setSchools(schoolsData);
-    setTrades(tradesData);
     setTrainers(trainersData);
-    setStatistics(stats);
   };
 
   const filteredData = () => {
@@ -173,7 +161,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       setStates((prev) => [
         ...prev,
         {
-          id: response._id, // map Mongo _id → frontend id
+          id: response._id,
           name: response.name,
           companyId: response.companyId,
           createdAt: response.createdAt,
@@ -199,7 +187,8 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     const fetchStates = async () => {
       try {
         const data = await getStates();
-        setStates(data); // [{ _id, name }]
+        const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+        setStates(formattedData);
         setStatistics((prev: any) => ({
           ...prev,
           totalStates: data.length,
@@ -215,21 +204,38 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     const fetchDistricts = async () => {
       try {
         const data = await getDistricts();
-        setDistricts(data); // API returns: [{ _id, name, stateId, ... }]
+        const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+        setDistricts(formattedData);
       } catch (error) {
         console.error("Failed to fetch districts", error);
       }
     };
     fetchDistricts();
   }, []);
+  
+  // FIX: Added a useEffect to fetch existing blocks when the component loads.
+  // This ensures the "Register School" button has the correct state after a page refresh.
+  useEffect(() => {
+    const fetchBlocks = async () => {
+        try {
+            const data = await getBlocks();
+            const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+            setBlocks(formattedData);
+        } catch (error) {
+            console.error("Failed to fetch blocks", error);
+        }
+    };
+    fetchBlocks();
+  }, []);
+
 
  useEffect(() => {
   const fetchSchools = async () => {
     try {
       const data = await getSchools();
-      setSchools(data); // update schools state
+      const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+      setSchools(formattedData);
 
-      // Update totalSchools count
       setStatistics((prev: any) => ({
         ...prev,
         totalSchools: data.length,
@@ -246,9 +252,9 @@ useEffect(() => {
   const fetchTrades = async () => {
     try {
       const data = await getTrades();
-      setTrades(data);
+      const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+      setTrades(formattedData);
 
-      // Update statistics totalTrades
       setStatistics((prev: any) => ({
         ...prev,
         totalTrades: data.length,
@@ -272,6 +278,10 @@ useEffect(() => {
         stateId: newDistrict.stateId,
         name: newDistrict.name,
       });
+
+      const data = await getDistricts();
+      const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+      setDistricts(formattedData);
 
       setNewDistrict({ name: "", stateId: "" });
       toast({ title: "✅ Success", description: "District registered!" });
@@ -322,7 +332,6 @@ useEffect(() => {
     }
   };
 
-  // Compute state-wise statistics for dashboard
   useEffect(() => {
     if (states.length === 0) return;
     const stats = states.map((state) => {
@@ -557,7 +566,7 @@ useEffect(() => {
                       disabled={!newDistrict.stateId}
                     >
                       <Plus className='w-4 h-4 mr-2' />
-                      Add Distric
+                      Add District
                     </Button>
                   </form>
                 </CardContent>
