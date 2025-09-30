@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Shield, Eye, EyeOff } from "lucide-react";
 import { User } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +21,7 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<LoginRole>("SuperAdmin"); // default role
+  const [role, setRole] = useState<LoginRole>("superadmin"); // default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -42,7 +41,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       // Map API user to your local User type
       const user: User = {
         id: res.user._id,
-        username: res.user.fullName, // ✅ use fullName from API
+        username: res.user.fullName,
         email: res.user.email,
         role: role.toLowerCase(),
         token: res.token,
@@ -51,9 +50,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         tradeName: res.user.tradeId?.name || undefined,
       };
 
-      console.log("✅ Mapped User Object:", user);
-
-      // ✅ Save to localStorage
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("token", res.token);
 
@@ -61,7 +57,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       toast({
         title: "Login Successful",
-        description: `Welcome ${res.user.username}!`,
+        description: `Welcome ${res.user.fullName}!`,
       });
     } catch (error: any) {
       console.error("❌ Login Error:", error);
@@ -77,35 +73,48 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md">
-        <Card className="backdrop-blur-xl bg-card/80 border-0 shadow-2xl">
-          <CardHeader className="text-center pb-8">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-primary/10 rounded-full">
-                <Shield className="w-8 h-8 text-primary" />
-              </div>
-            </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              NSQF Portal
+    <div className="min-h-screen flex bg-gradient-to-br from-primary/10 via-accent/10 to-secondary/20">
+      {/* Left Branding Section */}
+      <div className="hidden md:flex w-1/2 items-center justify-center bg-primary/10 relative overflow-hidden">
+        <div className="text-center space-y-6 p-12 max-w-lg">
+          <div className="inline-block p-6 bg-white/30 rounded-full backdrop-blur-md shadow-lg">
+            <Shield className="w-16 h-16 text-primary" />
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            NSQF Portal
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            A Multi-Tenant Education Management System for SuperAdmins,
+            CompanyAdmins, and Trainers to manage schools, companies, and
+            training programs seamlessly.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Form Section */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md shadow-2xl border-0 backdrop-blur-xl bg-card/80">
+          <CardHeader className="text-center space-y-2 pb-8">
+            <CardTitle className="text-2xl font-semibold">
+              Sign in to your account
             </CardTitle>
-            <CardDescription className="text-lg text-muted-foreground">
-              Multi-Tenant Education Management System
+            <CardDescription className="text-sm text-muted-foreground">
+              Enter your credentials to access your dashboard
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-5">
               {/* Role Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-sm font-medium">
-                  Role
+                  Select Role
                 </Label>
                 <select
                   id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as LoginRole)}
-                  className="w-full h-12 px-3 border rounded-lg bg-background/50"
+                  className="w-full h-12 px-3 border rounded-lg bg-background/50 focus:ring-2 focus:ring-primary"
                 >
                   <option value="superadmin">SuperAdmin</option>
                   <option value="companyadmin">CompanyAdmin</option>
@@ -116,7 +125,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
-                  Email
+                  Email Address
                 </Label>
                 <Input
                   id="email"
@@ -124,7 +133,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12"
-                  placeholder="Enter your email"
+                  placeholder="yourname@example.com"
                   required
                 />
               </div>
@@ -141,7 +150,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="h-12 pr-10"
-                    placeholder="Enter your password"
+                    placeholder="••••••••"
                     required
                   />
                   <Button
@@ -163,7 +172,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               {/* Submit */}
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground"
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg hover:opacity-90"
                 disabled={loading}
               >
                 {loading ? "Signing In..." : "Sign In"}
