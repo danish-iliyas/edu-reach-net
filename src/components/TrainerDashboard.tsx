@@ -264,7 +264,7 @@ const TrainerDashboard = ({ user, onLogout }) => {
       };
       try {
         const response = await fetch(
-          "https://nsqf.onrender.com/trainers/mark-daily-status",
+          "https://nsqf.onrender.com/api/trainers/mark-daily-status",
           {
             method: "POST",
             headers: {
