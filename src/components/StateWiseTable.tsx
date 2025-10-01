@@ -8,6 +8,8 @@ import {
   Table, TableHeader, TableRow, TableHead,
   TableBody, TableCell
 } from "@/components/ui/table"
+import { HardDriveDownload } from "lucide-react"
+import * as XLSX from "xlsx"
 
 interface StateStat {
   id: string
@@ -16,7 +18,6 @@ interface StateStat {
   blocks: number
   schools: number
 }
-
 
 interface StateWiseTableProps {
   data: StateStat[]
@@ -40,6 +41,14 @@ export function StateWiseTable({ data }: StateWiseTableProps) {
     (page + 1) * rowsPerPage
   )
 
+  // ⬇️ Download Excel function
+  const handleDownload = () => {
+    const worksheet = XLSX.utils.json_to_sheet(filteredStates)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "States")
+    XLSX.writeFile(workbook, "state-wise-data.xlsx")
+  }
+
   return (
     <Card className="backdrop-blur-sm bg-card/80">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -51,17 +60,25 @@ export function StateWiseTable({ data }: StateWiseTableProps) {
           </CardDescription>
         </div>
 
-        {/* Right: Search */}
-        <Input
-          type="text"
-          placeholder="Search state..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(0)
-          }}
-          className="max-w-xs"
-        />
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          {/* ⬇️ Download button with icon */}
+          <Button variant="outline" size="icon" onClick={handleDownload}>
+            <HardDriveDownload className="h-4 w-4" />
+          </Button>
+
+          {/* 🔍 Search input */}
+          <Input
+            type="text"
+            placeholder="Search state..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0)
+            }}
+            className="max-w-xs"
+          />
+        </div>
       </CardHeader>
 
       <CardContent>
