@@ -38,7 +38,9 @@ import {
   School,
   Filter,
   Eye,
+  HardDriveDownload,
 } from "lucide-react";
+import * as XLSX from 'xlsx';
 import {
   storage,
   Company,
@@ -452,6 +454,100 @@ useEffect(() => {
 
   const filtered = filteredData();
 
+  // Prepare & download Excel for currently visible school data
+  const handleDownloadSchools = () => {
+    try {
+      const anyFilter = !!(filters.stateId || filters.districtId || filters.blockId);
+      let rows: any[] = [];
+
+      if (anyFilter) {
+        // Use companyDetails shape from filtered API
+        rows = companyDetails.map((item: any) => {
+          const trainerNames = (item.trainers || []).map((t: any) => t.fullName || t.name).filter(Boolean);
+          // Collect distinct trade names from trainers (if present) OR from grouped data if any
+            const tradeNamesSet = new Set<string>();
+            (item.trainers || []).forEach((t: any) => {
+              if (t.tradeName) tradeNamesSet.add(t.tradeName);
+            });
+          return {
+            School_ID: item._id,
+            School_Name: item.name,
+            Address: item.address || '',
+            State: item.stateName || '',
+            District: item.districtName || '',
+            Block: item.blockName || '',
+            Trades: Array.from(tradeNamesSet).join(', '),
+            Trainers: trainerNames.join(', '),
+            Total_Trainers: trainerNames.length,
+            Total_Trades: tradeNamesSet.size,
+          };
+        });
+      } else {
+        // Use local schools state (already enriched partly)
+        rows = filtered.schools.map((school: any) => {
+          const apiTrades = Array.isArray(school.trades) ? school.trades : [];
+          const legacyTrades = trades.filter((t) => t.schoolId === school.id);
+          const schoolTrades = apiTrades.length ? apiTrades : legacyTrades;
+          const schoolTrainers = trainers.filter(
+            (t: any) => t.schoolId === school.id || t.schoolId === school._id
+          );
+
+          // Resolve hierarchy
+          let block: any = null;
+          let district: any = null;
+          let state: any = null;
+          if (school.blockId) {
+            if (typeof school.blockId === 'object') {
+              block = blocks.find((b) => b.id === school.blockId._id) || {
+                id: school.blockId._id,
+                name: school.blockId.name,
+              };
+            } else {
+              block = blocks.find((b) => b.id === school.blockId);
+            }
+          } else if (school.block) {
+            block = school.block;
+          }
+          if (block) {
+            district = districts.find((d) => d.id === block.districtId);
+            if (district) state = states.find((s) => s.id === district.stateId);
+          }
+
+          const tradeNames = schoolTrades.map((t: any) => t.name).filter(Boolean);
+          const trainerNames = schoolTrainers.map((t: any) => t.fullName || t.name).filter(Boolean);
+          return {
+            School_ID: school.id || school._id,
+            School_Name: school.name,
+            Address: school.address || '',
+            State: state?.name || '',
+            District: district?.name || '',
+            Block: block?.name || '',
+            Trades: tradeNames.join(', '),
+            Trainers: trainerNames.join(', '),
+            Total_Trainers: trainerNames.length,
+            Total_Trades: tradeNames.length,
+          };
+        });
+      }
+
+      if (!rows.length) {
+        toast({
+          title: 'No Data',
+            description: 'There are no schools to export for current selection.'
+        });
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Schools');
+      XLSX.writeFile(workbook, 'schools-trainers-data.xlsx');
+    } catch (err: any) {
+      console.error('Export failed', err);
+      toast({ title: 'Export Failed', description: err.message || 'Could not generate file', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-background via-accent/5 to-secondary/10'>
       {/* Header */}
@@ -852,9 +948,12 @@ useEffect(() => {
 
             {/* Schools Data (uses unified API when filters selected) */}
             <Card className='backdrop-blur-sm bg-card/80'>
-              <CardHeader>
-                <CardTitle>Schools & Trainers</CardTitle>
-                <CardDescription>
+              <CardHeader className='flex flex-row items-start justify-between gap-4'>
+                <div className='space-y-1'>
+                  <CardTitle className='flex items-center gap-3'>
+                    <span>Schools & Trainers</span>
+                  </CardTitle>
+                  <CardDescription>
                   {(() => {
                     const anyFilter = !!(filters.stateId || filters.districtId || filters.blockId);
                     const count = anyFilter ? companyDetails.length : filtered.schools.length;
@@ -863,7 +962,13 @@ useEffect(() => {
                   {filters.stateId && ` in ${states.find((s) => s.id === filters.stateId)?.name}`}
                   {filters.districtId && ` in ${districts.find((d) => d.id === filters.districtId)?.name}`}
                   {filters.blockId && ` in ${blocks.find((b) => b.id === filters.blockId)?.name}`}
-                </CardDescription>
+                  </CardDescription>
+                </div>
+                <div className='pt-1'>
+                  <Button variant='outline' size='icon' onClick={handleDownloadSchools} title='Download Excel'>
+                    <HardDriveDownload className='h-4 w-4' />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoadingCompanyDetails && (
