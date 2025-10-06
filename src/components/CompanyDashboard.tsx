@@ -924,41 +924,115 @@ useEffect(() => {
                       });
                     }
                     // Fallback to original local data listing
-                    return filtered.schools.map((school) => {
-                      const schoolTrades = trades.filter((t) => t.schoolId === school.id);
-                      const schoolTrainers = trainers.filter((t) => t.schoolId === school.id);
-                      const state = states.find((s) => s.id === school.stateId);
-                      const district = districts.find((d) => d.id === school.districtId);
-                      const block = blocks.find((b) => b.id === school.blockId);
+                    return filtered.schools.map((school: any) => {
+                      // API getSchools already returns trades array on each school (see user sample)
+                      const apiTrades = Array.isArray(school.trades) ? school.trades : [];
+                      // Fallback to legacy trades state (by schoolId) if apiTrades missing/empty
+                      const legacyTrades = trades.filter((t) => t.schoolId === school.id);
+                      const schoolTrades = apiTrades.length ? apiTrades : legacyTrades;
+
+                      // Trainers sourced from trainers state (storage) – match by schoolId / school.id / school._id
+                      const schoolTrainers = trainers.filter(
+                        (t: any) => t.schoolId === school.id || t.schoolId === school._id
+                      );
+
+                      // Derive hierarchy names (State → District → Block) using block→district→state relations if not directly on school
+                      let block: any = null;
+                      let district: any = null;
+                      let state: any = null;
+
+                      // Some API responses embed blockId as object
+                      if (school.blockId) {
+                        if (typeof school.blockId === 'object') {
+                          block = blocks.find((b) => b.id === school.blockId._id) || {
+                            id: school.blockId._id,
+                            name: school.blockId.name,
+                          };
+                        } else {
+                          block = blocks.find((b) => b.id === school.blockId);
+                        }
+                      } else if (school.block) {
+                        block = school.block;
+                      }
+
+                      if (block) {
+                        district = districts.find((d) => d.id === block.districtId);
+                        if (district) {
+                          state = states.find((s) => s.id === district.stateId);
+                        }
+                      }
+
+                      // Group trainers by trade (prefer tradeName, else match trade id)
+                      const trainersByTrade: Record<string, any[]> = {};
+                      schoolTrainers.forEach((t: any) => {
+                        const tradeName =
+                          t.tradeName ||
+                          (schoolTrades.find((tr: any) => tr._id === t.tradeId || tr.id === t.tradeId)?.name) ||
+                          'Unknown';
+                        if (!trainersByTrade[tradeName]) trainersByTrade[tradeName] = [];
+                        trainersByTrade[tradeName].push(t);
+                      });
+                      const tradeEntries = Object.entries(trainersByTrade);
+
                       return (
-                        <div key={school.id} className='p-4 rounded-lg border border-border/50 bg-background/30 hover:bg-background/50 transition-colors'>
+                        <div
+                          key={school.id || school._id}
+                          className='p-4 rounded-lg border border-border/50 bg-background/30 hover:bg-background/50 transition-colors'
+                        >
                           <div className='flex items-center justify-between mb-3'>
                             <div>
                               <h3 className='font-semibold text-lg'>{school.name}</h3>
-                              <p className='text-sm text-muted-foreground'>{state?.name} → {district?.name} → {block?.name}</p>
+                              <p className='text-sm text-muted-foreground'>
+                                {state?.name || '—'} → {district?.name || '—'} → {block?.name || '—'}
+                              </p>
+                              {school.address && (
+                                <p className='text-xs text-muted-foreground mt-1'>{school.address}</p>
+                              )}
                             </div>
                             <div className='flex gap-2'>
                               <Badge variant='outline'>{schoolTrades.length} Trades</Badge>
                               <Badge variant='outline'>{schoolTrainers.length} Trainers</Badge>
                             </div>
                           </div>
-                          {schoolTrades.length > 0 && (
+
+                          {/* Trades & Trainers detail (show either grouping by trainer trade OR fallback list of trades) */}
+                          {(tradeEntries.length > 0 || schoolTrades.length > 0) && (
                             <div className='space-y-2'>
                               <h4 className='font-medium text-sm'>Trades & Trainers:</h4>
                               <div className='grid gap-2 md:grid-cols-2'>
-                                {schoolTrades.map((trade) => {
-                                  const tradeTrainers = schoolTrainers.filter((t) => t.tradeId === trade.id);
-                                  return (
-                                    <div key={trade.id} className='p-2 rounded bg-background/50'>
-                                      <div className='font-medium text-sm text-primary'>{trade.name}</div>
-                                      {tradeTrainers.length > 0 ? (
-                                        <div className='text-xs text-muted-foreground'>Trainers: {tradeTrainers.map((t) => t.name).join(', ')}</div>
-                                      ) : (
-                                        <div className='text-xs text-muted-foreground'>No trainers assigned</div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                {/* Show grouped trainers by trade if available */}
+                                {tradeEntries.length > 0
+                                  ? tradeEntries.map(([tradeName, tlist]) => (
+                                      <div key={tradeName} className='p-2 rounded bg-background/50'>
+                                        <div className='font-medium text-sm text-primary'>{tradeName}</div>
+                                        {tlist.length > 0 ? (
+                                          <div className='text-xs text-muted-foreground'>
+                                            Trainers: {tlist.map((t: any) => t.fullName || t.name).join(', ')}
+                                          </div>
+                                        ) : (
+                                          <div className='text-xs text-muted-foreground'>No trainers assigned</div>
+                                        )}
+                                      </div>
+                                    ))
+                                  : // Fallback: list trades with their trainers filtered by trade id
+                                    schoolTrades.map((trade: any) => {
+                                      const tradeId = trade._id || trade.id;
+                                      const tradeTrainers = schoolTrainers.filter(
+                                        (t: any) => t.tradeId === tradeId
+                                      );
+                                      return (
+                                        <div key={tradeId} className='p-2 rounded bg-background/50'>
+                                          <div className='font-medium text-sm text-primary'>{trade.name}</div>
+                                          {tradeTrainers.length > 0 ? (
+                                            <div className='text-xs text-muted-foreground'>
+                                              Trainers: {tradeTrainers.map((t: any) => t.fullName || t.name).join(', ')}
+                                            </div>
+                                          ) : (
+                                            <div className='text-xs text-muted-foreground'>No trainers assigned</div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                               </div>
                             </div>
                           )}
