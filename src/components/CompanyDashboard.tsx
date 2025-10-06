@@ -55,7 +55,7 @@ import SchoolRegistrationForm from "./SchoolRegistrationForm";
 import ChartMapView from "./ChartMapView";
 import { StateWiseTable } from "./StateWiseTable";
 // FIX: Added getBlocks to the import list
-import { createState, getStates, createDistrict, getDistricts, createBlock, getBlocks, getSchools, getTrades, getSchoolDetailsByBlock, getAllDetailsByCompany } from "@/service/companyAdminApi";
+import { createState, getStates, createDistrict, getDistricts, createBlock, getBlocks, getSchools, getTrades, getSchoolDetailsByBlock, getAllDetailsByCompany, getCompanyDetailsByBlockIdDistrictIdStateId } from "@/service/companyAdminApi";
 
 
 interface CompanyDashboardProps {
@@ -76,6 +76,10 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   const [trades, setTrades] = useState<Trade[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [statistics, setStatistics] = useState<any>({});
+  // Filtered company details (schools + trainers) via unified API
+  const [companyDetails, setCompanyDetails] = useState<any[]>([]);
+  const [isLoadingCompanyDetails, setIsLoadingCompanyDetails] = useState(false);
+  const [companyDetailsError, setCompanyDetailsError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     stateId: "",
     districtId: "",
@@ -361,6 +365,36 @@ useEffect(() => {
 
   fetchCompanyDetails();
 }, [trainers, trades]);
+
+  // Fetch filtered company details (schools with trainers & trades) when filters applied
+  useEffect(() => {
+    const { stateId, districtId, blockId } = filters;
+    // If no filters selected, clear companyDetails (we'll rely on generic schools list)
+    if (!stateId && !districtId && !blockId) {
+      setCompanyDetails([]);
+      setCompanyDetailsError(null);
+      return;
+    }
+
+    const run = async () => {
+      setIsLoadingCompanyDetails(true);
+      setCompanyDetailsError(null);
+      try {
+        const data = await getCompanyDetailsByBlockIdDistrictIdStateId(
+          blockId || undefined,
+          districtId || undefined,
+          stateId || undefined
+        );
+        setCompanyDetails(data || []);
+      } catch (err: any) {
+        setCompanyDetailsError(err.message || 'Failed to fetch filtered data');
+        setCompanyDetails([]);
+      } finally {
+        setIsLoadingCompanyDetails(false);
+      }
+    };
+    run();
+  }, [filters.stateId, filters.districtId, filters.blockId]);
 
 
   const StatCard = ({
@@ -787,106 +821,133 @@ useEffect(() => {
               </CardContent>
             </Card>
 
-            {/* Schools Data */}
+            {/* Schools Data (uses unified API when filters selected) */}
             <Card className='backdrop-blur-sm bg-card/80'>
               <CardHeader>
                 <CardTitle>Schools & Trainers</CardTitle>
                 <CardDescription>
-                  Showing {filtered.schools.length} schools
-                  {filters.stateId &&
-                    ` in ${states.find((s) => s.id === filters.stateId)?.name}`}
-                  {filters.districtId &&
-                    ` in ${
-                      districts.find((d) => d.id === filters.districtId)?.name
-                    }`}
-                  {filters.blockId &&
-                    ` in ${blocks.find((b) => b.id === filters.blockId)?.name}`}
+                  {(() => {
+                    const anyFilter = !!(filters.stateId || filters.districtId || filters.blockId);
+                    const count = anyFilter ? companyDetails.length : filtered.schools.length;
+                    return `Showing ${count} schools`;
+                  })()}
+                  {filters.stateId && ` in ${states.find((s) => s.id === filters.stateId)?.name}`}
+                  {filters.districtId && ` in ${districts.find((d) => d.id === filters.districtId)?.name}`}
+                  {filters.blockId && ` in ${blocks.find((b) => b.id === filters.blockId)?.name}`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {isLoadingCompanyDetails && (
+                  <div className='text-center py-6 text-sm text-muted-foreground'>Loading filtered data...</div>
+                )}
+                {companyDetailsError && (
+                  <div className='text-center py-6 text-sm text-destructive'>{companyDetailsError}</div>
+                )}
                 <div className='space-y-4'>
-                  {filtered.schools.map((school) => {
-                    const schoolTrades = trades.filter(
-                      (t) => t.schoolId === school.id
-                    );
-                    const schoolTrainers = trainers.filter(
-                      (t) => t.schoolId === school.id
-                    );
-                    const state = states.find((s) => s.id === school.stateId);
-                    const district = districts.find(
-                      (d) => d.id === school.districtId
-                    );
-                    const block = blocks.find((b) => b.id === school.blockId);
-
-                    return (
-                      <div
-                        key={school.id}
-                        className='p-4 rounded-lg border border-border/50 bg-background/30 hover:bg-background/50 transition-colors'
-                      >
-                        <div className='flex items-center justify-between mb-3'>
-                          <div>
-                            <h3 className='font-semibold text-lg'>
-                              {school.name}
-                            </h3>
-                            <p className='text-sm text-muted-foreground'>
-                              {state?.name} → {district?.name} → {block?.name}
-                            </p>
-                          </div>
-                          <div className='flex gap-2'>
-                            <Badge variant='outline'>
-                              {schoolTrades.length} Trades
-                            </Badge>
-                            <Badge variant='outline'>
-                              {schoolTrainers.length} Trainers
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {schoolTrades.length > 0 && (
-                          <div className='space-y-2'>
-                            <h4 className='font-medium text-sm'>
-                              Trades & Trainers:
-                            </h4>
-                            <div className='grid gap-2 md:grid-cols-2'>
-                              {schoolTrades.map((trade) => {
-                                const tradeTrainers = schoolTrainers.filter(
-                                  (t) => t.tradeId === trade.id
-                                );
-                                return (
-                                  <div
-                                    key={trade.id}
-                                    className='p-2 rounded bg-background/50'
-                                  >
-                                    <div className='font-medium text-sm text-primary'>
-                                      {trade.name}
+                  {(() => {
+                    const anyFilter = !!(filters.stateId || filters.districtId || filters.blockId);
+                    if (anyFilter) {
+                      // Render from companyDetails API response
+                      return companyDetails.map((item) => {
+                        // Group trainers by tradeName
+                        const trainersByTrade: Record<string, any[]> = {};
+                        (item.trainers || []).forEach((t: any) => {
+                          if (!trainersByTrade[t.tradeName || 'Unknown']) trainersByTrade[t.tradeName || 'Unknown'] = [];
+                          trainersByTrade[t.tradeName || 'Unknown'].push(t);
+                        });
+                        const tradeEntries = Object.entries(trainersByTrade);
+                        return (
+                          <div key={item._id} className='p-4 rounded-lg border border-border/50 bg-background/30 hover:bg-background/50 transition-colors'>
+                            <div className='flex items-center justify-between mb-3'>
+                              <div>
+                                <h3 className='font-semibold text-lg'>{item.name}</h3>
+                                <p className='text-sm text-muted-foreground'>
+                                  {item.stateName} → {item.districtName} → {item.blockName}
+                                </p>
+                                <p className='text-xs text-muted-foreground mt-1'>{item.address}</p>
+                              </div>
+                              <div className='flex gap-2'>
+                                <Badge variant='outline'>{tradeEntries.length} Trades</Badge>
+                                <Badge variant='outline'>{(item.trainers || []).length} Trainers</Badge>
+                              </div>
+                            </div>
+                            {tradeEntries.length > 0 && (
+                              <div className='space-y-2'>
+                                <h4 className='font-medium text-sm'>Trades & Trainers:</h4>
+                                <div className='grid gap-2 md:grid-cols-2'>
+                                  {tradeEntries.map(([trade, tlist]) => (
+                                    <div key={trade} className='p-2 rounded bg-background/50'>
+                                      <div className='font-medium text-sm text-primary'>{trade}</div>
+                                      {tlist.length > 0 ? (
+                                        <div className='text-xs text-muted-foreground'>
+                                          Trainers: {tlist.map((t: any) => t.fullName).join(', ')}
+                                        </div>
+                                      ) : (
+                                        <div className='text-xs text-muted-foreground'>No trainers assigned</div>
+                                      )}
                                     </div>
-                                    {tradeTrainers.length > 0 ? (
-                                      <div className='text-xs text-muted-foreground'>
-                                        Trainers:{" "}
-                                        {tradeTrainers
-                                          .map((t) => t.name)
-                                          .join(", ")}
-                                      </div>
-                                    ) : (
-                                      <div className='text-xs text-muted-foreground'>
-                                        No trainers assigned
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    }
+                    // Fallback to original local data listing
+                    return filtered.schools.map((school) => {
+                      const schoolTrades = trades.filter((t) => t.schoolId === school.id);
+                      const schoolTrainers = trainers.filter((t) => t.schoolId === school.id);
+                      const state = states.find((s) => s.id === school.stateId);
+                      const district = districts.find((d) => d.id === school.districtId);
+                      const block = blocks.find((b) => b.id === school.blockId);
+                      return (
+                        <div key={school.id} className='p-4 rounded-lg border border-border/50 bg-background/30 hover:bg-background/50 transition-colors'>
+                          <div className='flex items-center justify-between mb-3'>
+                            <div>
+                              <h3 className='font-semibold text-lg'>{school.name}</h3>
+                              <p className='text-sm text-muted-foreground'>{state?.name} → {district?.name} → {block?.name}</p>
+                            </div>
+                            <div className='flex gap-2'>
+                              <Badge variant='outline'>{schoolTrades.length} Trades</Badge>
+                              <Badge variant='outline'>{schoolTrainers.length} Trainers</Badge>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {schoolTrades.length > 0 && (
+                            <div className='space-y-2'>
+                              <h4 className='font-medium text-sm'>Trades & Trainers:</h4>
+                              <div className='grid gap-2 md:grid-cols-2'>
+                                {schoolTrades.map((trade) => {
+                                  const tradeTrainers = schoolTrainers.filter((t) => t.tradeId === trade.id);
+                                  return (
+                                    <div key={trade.id} className='p-2 rounded bg-background/50'>
+                                      <div className='font-medium text-sm text-primary'>{trade.name}</div>
+                                      {tradeTrainers.length > 0 ? (
+                                        <div className='text-xs text-muted-foreground'>Trainers: {tradeTrainers.map((t) => t.name).join(', ')}</div>
+                                      ) : (
+                                        <div className='text-xs text-muted-foreground'>No trainers assigned</div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
 
-                  {filtered.schools.length === 0 && (
-                    <div className='text-center py-8 text-muted-foreground'>
-                      No schools found with current filters
-                    </div>
-                  )}
+                  {(() => {
+                    const anyFilter = !!(filters.stateId || filters.districtId || filters.blockId);
+                    const currentLength = anyFilter ? companyDetails.length : filtered.schools.length;
+                    if (!isLoadingCompanyDetails && currentLength === 0) {
+                      return (
+                        <div className='text-center py-8 text-muted-foreground'>No schools found with current filters</div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </CardContent>
             </Card>
