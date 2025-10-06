@@ -154,3 +154,24 @@ export const getAllDetailsByCompany = async () => {
     throw new Error(error.response?.data?.message || "Failed to fetch getAllDetaileByCompany");
   }
 };
+
+
+//Get company details by blockId, districtId, stateId
+export const getCompanyDetailsByBlockIdDistrictIdStateId = async (
+  blockId?: string,
+  districtId?: string,
+  stateId?: string
+) => {
+  try {
+    const res = await axiosInstance.get("/management/schools/details", {
+      params: {
+        blockId,
+        districtId,
+        stateId
+      }
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch getAllCompanyDetailsByBlockIdDistrictIdStateId");
+  }
+};
