@@ -208,7 +208,15 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     const fetchDistricts = async () => {
       try {
         const data = await getDistricts();
-        const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+        // Normalize nested stateId object to primitive id for filtering
+        const formattedData = data.map((item: any) => ({
+          id: item._id,
+          name: item.name,
+          stateId: typeof item.stateId === 'object' ? item.stateId?._id : item.stateId,
+          stateName: typeof item.stateId === 'object' ? item.stateId?.name : undefined,
+          companyId: item.companyId,
+          createdAt: item.createdAt,
+        }));
         setDistricts(formattedData);
       } catch (error) {
         console.error("Failed to fetch districts", error);
@@ -223,7 +231,21 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     const fetchBlocks = async () => {
         try {
             const data = await getBlocks();
-            const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+            // Normalize nested district/state ids
+            const formattedData = data.map((item: any) => ({
+              id: item._id,
+              name: item.name,
+              districtId: typeof item.districtId === 'object' ? item.districtId?._id : item.districtId,
+              districtName: typeof item.districtId === 'object' ? item.districtId?.name : undefined,
+              stateId: typeof item.districtId === 'object'
+                ? (typeof item.districtId.stateId === 'object'
+                    ? item.districtId.stateId?._id
+                    : item.districtId.stateId)
+                : undefined,
+              pincode: item.pincode,
+              companyId: item.companyId,
+              createdAt: item.createdAt,
+            }));
             setBlocks(formattedData);
         } catch (error) {
             console.error("Failed to fetch blocks", error);
@@ -284,7 +306,14 @@ useEffect(() => {
       });
 
       const data = await getDistricts();
-      const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+      const formattedData = data.map((item: any) => ({
+        id: item._id,
+        name: item.name,
+        stateId: typeof item.stateId === 'object' ? item.stateId?._id : item.stateId,
+        stateName: typeof item.stateId === 'object' ? item.stateId?.name : undefined,
+        companyId: item.companyId,
+        createdAt: item.createdAt,
+      }));
       setDistricts(formattedData);
 
       setNewDistrict({ name: "", stateId: "" });
