@@ -36,28 +36,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       const res = await loginUser({ email, password }, role);
 
-      console.log("✅ API Response:", res);
+      console.log("✅ API Response is here:", res);
 
-      // Map API user to your local User type
-      const user: User = {
-        id: res.user._id,
-        username: res.user.fullName,
-        email: res.user.email,
-        role: role.toLowerCase(),
-        token: res.token,
-        companyName: res.user.companyId?.name || undefined,
-        schoolName: res.user.schoolId?.name || undefined,
-        tradeName: res.user.tradeId?.name || undefined,
-      };
+      // API returns different shapes in different endpoints. Normalize safely.
+      const raw: any = (res as any).user ?? (res as any).data ?? (res as any);
+
+      const apiId = raw?._id ?? raw?.id;
+      const apiName = raw?.fullName ?? raw?.name ?? raw?.username ?? raw?.email ?? "User";
+      const apiEmail = raw?.email ?? (res as any).email ?? "";
+      const apiToken = (res as any).token ?? (res as any).data?.token ?? (res as any).token;
+
+      // Build a minimal User shape and cast to User to avoid strict excess-property checks.
+      const user = {
+        id: apiId,
+        username: apiName,
+        role: role as any,
+        token: apiToken,
+      } as unknown as User;
 
       localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("token", res.token);
+      if (apiToken) localStorage.setItem("token", apiToken);
 
       onLogin(user);
 
       toast({
         title: "Login Successful",
-        description: `Welcome ${res.user.fullName}!`,
+        description: `Welcome ${apiName}!`,
       });
     } catch (error: any) {
       console.error("❌ Login Error:", error);
@@ -119,6 +123,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   <option value="superadmin">SuperAdmin</option>
                   <option value="companyadmin">CompanyAdmin</option>
                   <option value="trainer">Trainer</option>
+                  <option value="statecoordinator">State Coordinator</option>
                 </select>
               </div>
 

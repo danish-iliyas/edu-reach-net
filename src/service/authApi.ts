@@ -1,7 +1,7 @@
 import axiosInstance from "../config/axiosInstance";
 
 // Define the possible user roles for type safety and to map to endpoints.
-export type LoginRole = 'SuperAdmin' | 'CompanyAdmin' | 'trainer';
+export type LoginRole = 'superadmin' | 'companyadmin' | 'trainer' | 'statecoordinator';
 
 // The data payload for the login request.
 interface LoginPayload {
@@ -29,6 +29,7 @@ const loginEndpoints: Record<LoginRole, string> = {
   superadmin: "/superadmins/login",
   companyadmin: "/companyadmins/login",
   trainer: "/management/trainers/login",
+  statecoordinator: "/companyadmins/coordinatorLogin",
 };
 
 /**

@@ -4,14 +4,15 @@
 export interface User {
   id: string;
   username: string;
-  password: string;
-  role: 'superadmin' | 'companyadmin' | 'trainer';
+  password?: string;
+  role: 'superadmin' | 'companyadmin' | 'trainer' | 'statecoordinator';
   companyId?: string;
   trainerData?: {
     name: string;
     tradeId: string;
     schoolId: string;
   };
+  token?: string;
 }
 
 export interface Company {
@@ -106,15 +107,15 @@ class FileSystemStorage {
 
   // Initialize with default data
   initialize(): void {
-    // Default admin
+    // Default superadmin
     const users = this.getUsers();
-    if (!users.find(u => u.role === 'admin')) {
+    if (!users.find(u => u.role === 'superadmin')) {
       this.addUser({
-        id: 'admin-1',
+        id: 'superadmin-1',
         username: 'admin',
         password: 'admin123',
-        role: 'admin'
-      });
+        role: 'superadmin'
+      } as User);
     }
 
     // Default companies
@@ -135,9 +136,9 @@ class FileSystemStorage {
           id: `user-${comp.id}`,
           username: comp.username,
           password: comp.password,
-          role: 'company',
+          role: 'companyadmin',
           companyId: comp.id
-        });
+        } as User);
       });
     }
   }

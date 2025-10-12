@@ -4,6 +4,7 @@ import LoginPage from "@/components/LoginPage";
 import AdminDashboard from "@/components/AdminDashboard";
 import CompanyDashboard from "@/components/CompanyDashboard";
 import TrainerDashboard from "@/components/TrainerDashboard";
+import CoordinatorDashboard from "@/components/CoordinatorDashboard";
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,6 +54,10 @@ const Index = () => {
     return <CompanyDashboard user={user} onLogout={handleLogout} />;
   } else if (user.role === "trainer") {
     return <TrainerDashboard user={user} onLogout={handleLogout} />;
+  }
+
+  else if (user.role === "statecoordinator") {
+    return <CoordinatorDashboard user={user} onLogout={handleLogout} />;
   }
 
   // fallback
